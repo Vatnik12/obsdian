@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Power BI Суфлер</title>
+    <title>Авто - суфлер by Vatnik</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -344,6 +344,7 @@
                     stopRecognition();
                 } else {
                     startRecognition();
+                    window.focus(); // Фокусируем окно браузера
                 }
             });
 
@@ -359,8 +360,12 @@
                 }
             });
 
-            // Горячие клавиши
-            document.addEventListener('keydown', (e) => {
+            // Делаем страницу "фокусируемой" для глобальных горячих клавиш
+            document.body.tabIndex = 0;
+            document.body.style.outline = 'none'; // Убираем визуальный эффект фокуса
+
+            // Глобальные горячие клавиши (работают даже если окно не в фокусе)
+            window.addEventListener('keydown', function(e) {
                 // Pause/Break - управление суфлером
                 if (e.code === 'Pause') {
                     e.preventDefault();
@@ -368,9 +373,10 @@
                         stopRecognition();
                     } else {
                         startRecognition();
+                        window.focus(); // Перехватываем фокус
                     }
                 }
-                // Ctrl+E (или Cmd+E на Mac) - управление редактором
+                // Ctrl+E - управление редактором
                 if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                     e.preventDefault();
                     toggleEditorBtn.click();
