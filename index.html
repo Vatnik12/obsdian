@@ -1,66 +1,358 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Markdown Teleprompter</title>
+    <title>Power BI Суфлер</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #editor { width: 100%; height: 300px; font-size: 16px; margin-bottom: 20px; }
-        #preview { border: 1px solid #ccc; padding: 20px; min-height: 500px; font-size: 18px; line-height: 1.5; }
-        .highlight { background-color: yellow; padding: 2px; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        #container {
+            display: flex;
+            min-height: 100vh;
+        }
+        #editor {
+            width: 40%;
+            padding: 20px;
+            background: white;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        #preview {
+            width: 60%;
+            padding: 40px;
+            font-size: 22px;
+            line-height: 1.6;
+            overflow-y: auto;
+        }
+        textarea {
+            width: 100%;
+            height: calc(100vh - 40px);
+            border: 1px solid #ddd;
+            padding: 15px;
+            font-size: 16px;
+            resize: none;
+            border-radius: 4px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .sufler-highlight {
+            background: #FFFF00 !important;
+            color: #000 !important;
+            border-radius: 3px !important;
+            padding: 0 2px !important;
+        }
+        .sufler-active-block {
+            background: rgba(173, 216, 230, 0.3) !important;
+            transition: background 0.5s ease !important;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        
+        function filledCell(cell) {
+            return cell !== '' && cell != null;
+        }
+        
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+    </script>
 </head>
 <body>
-    <h1>Markdown Teleprompter</h1>
-    <textarea id="editor" placeholder="Введи свой Markdown текст здесь..."></textarea>
-    <div id="preview"></div>
+    <div id="container">
+        <div id="editor">
+            <h2>Редактор Markdown</h2>
+            <textarea placeholder="Введите текст презентации здесь..."></textarea>
+        </div>
+        <div id="preview"></div>
+    </div>
+
     <script>
-        const editor = document.getElementById('editor');
+        // Инициализация редактора
+        const editor = document.querySelector('#editor textarea');
         const preview = document.getElementById('preview');
+        
+        // Обработчик ввода текста
         editor.addEventListener('input', () => {
             preview.innerHTML = marked.parse(editor.value);
+            
+            // Сохраняем текст в localStorage
+            localStorage.setItem('suflerContent', editor.value);
         });
-        preview.innerHTML = marked.parse(editor.value);
+
+        // Загрузка сохраненного текста
+        const savedContent = localStorage.getItem('suflerContent');
+        if (savedContent) {
+            editor.value = savedContent;
+            preview.innerHTML = marked.parse(savedContent);
+        }
+
+        // Автоматический размер текстового поля
+        function adjustTextarea() {
+            editor.style.height = 'auto';
+            editor.style.height = editor.scrollHeight + 'px';
+        }
+        editor.addEventListener('input', adjustTextarea);
+        adjustTextarea();
+
+        // Фокус на редакторе при загрузке
+        window.addEventListener('load', () => {
+            editor.focus();
+        });
+    </script>
+
+    <!-- Скрипт суфлера -->
+    <script>
+    // ==UserScript==
+    // @name         Power BI Суфлер (Интегрированная версия)
+    // @version      1.0
+    // @description  Идеально интегрированный суфлер
+    // @author       Ваш технаръ
+    // ==/UserScript==
+
+    (function() {
+        'use strict';
+
+        const config = {
+            wordWeights: [0.1, 0.3, 0.5, 0.7, 0.8],
+            minWordLength: 3,
+            confidenceThreshold: 0.4,
+            scrollDuration: 1000,
+            targetPositionRatio: 0.4,
+            highlightColor: '#FFFF00',
+            blockColor: '#ADD8E633'
+        };
+
+        function initIntegratedSufler() {
+            // Создаем панель управления
+            const panel = document.createElement('div');
+            panel.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 9999;
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-family: Arial, sans-serif;
+            `;
+
+            panel.innerHTML = `
+                <button id="suflerToggle" style="
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                ">🎤 Включить суфлер</button>
+                <div id="suflerStatus" style="margin-top:8px;font-size:13px;">
+                    Готов к работе
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const toggleBtn = document.getElementById('suflerToggle');
+            const statusEl = document.getElementById('suflerStatus');
+            let recognition;
+            let isActive = false;
+
+            // Центрирование элемента
+            function centerElement(element) {
+                if (!element) return;
+                
+                const elementRect = element.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const targetScrollPos = elementRect.top + window.pageYOffset - (viewportHeight * config.targetPositionRatio);
+                
+                window.scrollTo({
+                    top: targetScrollPos,
+                    behavior: 'smooth'
+                });
+            }
+
+            // Поиск лучшего совпадения
+            function findBestMatch(words) {
+                const elements = document.querySelectorAll('#preview p, #preview h1, #preview h2, #preview h3, #preview li');
+                let bestMatch = { element: null, score: 0 };
+
+                elements.forEach(el => {
+                    const text = el.textContent.toLowerCase();
+                    let score = 0;
+
+                    words.forEach((word, index) => {
+                        if (word.length >= config.minWordLength && text.includes(word)) {
+                            score += config.wordWeights[index] || 0;
+                        }
+                    });
+
+                    if (score > bestMatch.score) {
+                        bestMatch = { element: el, score: score };
+                    }
+                });
+
+                return bestMatch.element;
+            }
+
+            // Подсветка и центрирование
+            function processWords(words) {
+                // Очистка предыдущих подсветок
+                document.querySelectorAll('.sufler-highlight, .sufler-active-block').forEach(el => {
+                    el.classList.remove('sufler-highlight', 'sufler-active-block');
+                });
+
+                const targetElement = findBestMatch(words);
+                
+                if (targetElement) {
+                    // Подсветка блока
+                    targetElement.classList.add('sufler-active-block');
+                    
+                    // Подсветка слов
+                    let newHTML = targetElement.innerHTML;
+                    words.forEach(word => {
+                        if (word.length >= config.minWordLength) {
+                            newHTML = newHTML.replace(
+                                new RegExp(`(${word})`, 'gi'),
+                                '<span class="sufler-highlight">$1</span>'
+                            );
+                        }
+                    });
+                    targetElement.innerHTML = newHTML;
+
+                    // Центрирование
+                    centerElement(targetElement);
+                    statusEl.textContent = `Найдено: "${words.slice(-1)[0]}"`;
+                } else {
+                    statusEl.textContent = 'Не найдено совпадений';
+                }
+            }
+
+            // Инициализация распознавания
+            function initRecognition() {
+                if (!('webkitSpeechRecognition' in window)) {
+                    statusEl.textContent = 'Распознавание речи не поддерживается';
+                    toggleBtn.disabled = true;
+                    return null;
+                }
+
+                const rec = new webkitSpeechRecognition();
+                rec.continuous = true;
+                rec.interimResults = true;
+                rec.lang = 'ru-RU';
+
+                rec.onresult = function(event) {
+                    const results = Array.from(event.results);
+                    const last = results[results.length - 1];
+                    
+                    if (last.isFinal) {
+                        const transcript = last[0].transcript.trim();
+                        const confidence = last[0].confidence;
+                        
+                        if (confidence >= config.confidenceThreshold) {
+                            const words = transcript.split(/\s+/)
+                                .filter(w => w.length >= config.minWordLength)
+                                .slice(-config.wordWeights.length);
+                            
+                            if (words.length > 0) {
+                                processWords(words);
+                            }
+                        }
+                    }
+                };
+
+                rec.onerror = function(event) {
+                    statusEl.textContent = `Ошибка: ${event.error}`;
+                    stopRecognition();
+                };
+
+                rec.onend = function() {
+                    if (isActive) {
+                        setTimeout(startRecognition, 300);
+                    }
+                };
+
+                return rec;
+            }
+
+            function startRecognition() {
+                if (!recognition) {
+                    recognition = initRecognition();
+                    if (!recognition) return;
+                }
+
+                try {
+                    recognition.start();
+                    isActive = true;
+                    toggleBtn.textContent = '🔴 Выключить';
+                    toggleBtn.style.background = '#f44336';
+                    statusEl.textContent = 'Слушаю...';
+                } catch (error) {
+                    statusEl.textContent = 'Ошибка доступа к микрофону';
+                    console.error(error);
+                }
+            }
+
+            function stopRecognition() {
+                if (recognition) {
+                    recognition.stop();
+                }
+                isActive = false;
+                toggleBtn.textContent = '🎤 Включить';
+                toggleBtn.style.background = '#4CAF50';
+                statusEl.textContent = 'Микрофон выключен';
+            }
+
+            // Кнопка управления
+            toggleBtn.addEventListener('click', function() {
+                if (isActive) {
+                    stopRecognition();
+                } else {
+                    startRecognition();
+                }
+            });
+        }
+
+        // Инициализация после загрузки контента
+        const observer = new MutationObserver(function(mutations) {
+            initIntegratedSufler();
+            observer.disconnect();
+        });
+        observer.observe(document.getElementById('preview'), { childList: true });
+    })();
     </script>
 </body>
 </html>
