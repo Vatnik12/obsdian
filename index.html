@@ -358,6 +358,24 @@
                     toggleEditorBtn.textContent = '📝 Скрыть редактор';
                 }
             });
+
+            // Горячие клавиши
+            document.addEventListener('keydown', (e) => {
+                // Pause/Break - управление суфлером
+                if (e.code === 'Pause') {
+                    e.preventDefault();
+                    if (isActive) {
+                        stopRecognition();
+                    } else {
+                        startRecognition();
+                    }
+                }
+                // Ctrl+E (или Cmd+E на Mac) - управление редактором
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    toggleEditorBtn.click();
+                }
+            });
         }
 
         // Инициализация после загрузки контента
