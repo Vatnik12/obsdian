@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Автосуфлер V2.0</title>
+    <title>Авто - суфлер by Vatnik</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -14,11 +14,13 @@
         #container {
             display: flex;
             min-height: 100vh;
+            transition: all 0.3s ease;
         }
         #editor-container {
             width: 40%;
             background: white;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
             position: relative;
         }
         #editor {
@@ -44,6 +46,15 @@
             justify-content: space-between;
             align-items: center;
         }
+        .toggle-editor {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
         .sufler-highlight {
             background: #FFFF00 !important;
             color: #000 !important;
@@ -52,40 +63,15 @@
         }
         .sufler-active-block {
             background: rgba(173, 216, 230, 0.3) !important;
-            transition: background 0.3s ease !important;
-        }
-        .control-panel {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .control-btn {
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #suflerToggle {
-            background: #4CAF50;
-        }
-        #toggleEditorBtn {
-            background: #3498db;
-        }
-        #suflerStatus {
-            margin-top: 5px;
-            font-size: 13px;
+            transition: background 0.5s ease !important;
         }
         .hidden-editor {
-            display: none;
+            transform: translateX(-100%);
+            width: 0 !important;
+            opacity: 0;
+        }
+        .full-width-preview {
+            width: 100% !important;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
@@ -94,10 +80,10 @@
     <div id="container">
         <div id="editor-container">
             <div class="editor-header">
-                <h2>Редактор</h2>
-                <button id="toggleEditorBtn" class="control-btn">📝 Скрыть</button>
+                <h2>Редактор Markdown</h2>
+                <button class="toggle-editor">Скрыть</button>
             </div>
-            <textarea id="editor" placeholder="Введите текст презентации..."></textarea>
+            <textarea id="editor" placeholder="Введите текст презентации здесь..."></textarea>
         </div>
         <div id="preview"></div>
     </div>
@@ -107,188 +93,304 @@
         const editor = document.getElementById('editor');
         const preview = document.getElementById('preview');
         const editorContainer = document.getElementById('editor-container');
+        const toggleBtn = document.querySelector('.toggle-editor');
+        const container = document.getElementById('container');
         
+        // Обработчик ввода текста
         editor.addEventListener('input', () => {
             preview.innerHTML = marked.parse(editor.value);
             localStorage.setItem('suflerContent', editor.value);
         });
 
-        if (localStorage.getItem('suflerContent')) {
-            editor.value = localStorage.getItem('suflerContent');
-            preview.innerHTML = marked.parse(editor.value);
+        // Загрузка сохраненного текста
+        const savedContent = localStorage.getItem('suflerContent');
+        if (savedContent) {
+            editor.value = savedContent;
+            preview.innerHTML = marked.parse(savedContent);
         }
 
-        // Автосуфлер
-        (function() {
-            'use strict';
+        // Кнопка скрытия/показа редактора
+        toggleBtn.addEventListener('click', () => {
+            editorContainer.classList.toggle('hidden-editor');
+            preview.classList.toggle('full-width-preview');
             
-            const config = {
-                wordWeights: [0.1, 0.3, 0.5, 0.7, 0.9],
-                minWordLength: 3,
-                confidenceThreshold: 0.3,
-                scrollDuration: 800,
-                wordsBufferSize: 5,
-                targetPositionRatio: 0.4
-            };
-            
-            let recognition;
-            let isActive = false;
-            let wordsBuffer = [];
-            let lastProcessedIndex = 0;
-            
+            if (editorContainer.classList.contains('hidden-editor')) {
+                toggleBtn.textContent = 'Показать';
+            } else {
+                toggleBtn.textContent = 'Скрыть';
+            }
+        });
+
+        // Автоматический размер текстового поля
+        function adjustTextarea() {
+            editor.style.height = 'auto';
+            editor.style.height = editor.scrollHeight + 'px';
+        }
+        editor.addEventListener('input', adjustTextarea);
+        adjustTextarea();
+
+        // Фокус на редакторе при загрузке
+        window.addEventListener('load', () => {
+            editor.focus();
+        });
+    </script>
+
+    <!-- Скрипт суфлера -->
+    <script>
+    (function() {
+        'use strict';
+
+        const config = {
+            wordWeights: [0.1, 0.3, 0.5, 0.7, 0.8],
+            minWordLength: 3,
+            confidenceThreshold: 0.4,
+            scrollDuration: 1000,
+            targetPositionRatio: 0.4,
+            highlightColor: '#FFFF00',
+            blockColor: '#ADD8E633'
+        };
+
+        function initIntegratedSufler() {
             // Создаем панель управления
             const panel = document.createElement('div');
-            panel.className = 'control-panel';
+            panel.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 9999;
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 10px;
+                border-radius: 5px;
+                font-family: Arial, sans-serif;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            `;
+
             panel.innerHTML = `
-                <button id="suflerToggle" class="control-btn">🎤 Включить</button>
-                <div id="suflerStatus">Готов к работе</div>
+                <button id="suflerToggle" style="
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                ">🎤 Включить суфлер</button>
+                <button id="toggleEditorBtn" style="
+                    background: #3498db;
+                    color: white;
+                    border: none;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                ">📝 Скрыть редактор</button>
+                <div id="suflerStatus" style="margin-top:5px;font-size:13px;">
+                    Готов к работе
+                </div>
             `;
             document.body.appendChild(panel);
-            
+
             const suflerToggle = document.getElementById('suflerToggle');
+            const toggleEditorBtn = document.getElementById('toggleEditorBtn');
             const statusEl = document.getElementById('suflerStatus');
-            
-            // Основные функции
+            let recognition;
+            let isActive = false;
+
+            // Центрирование элемента
             function centerElement(element) {
                 if (!element) return;
-                const rect = element.getBoundingClientRect();
+                
+                const elementRect = element.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const targetScrollPos = elementRect.top + window.pageYOffset - (viewportHeight * config.targetPositionRatio);
+                
                 window.scrollTo({
-                    top: rect.top + window.pageYOffset - (window.innerHeight * config.targetPositionRatio),
+                    top: targetScrollPos,
                     behavior: 'smooth'
                 });
             }
-            
+
+            // Поиск лучшего совпадения
             function findBestMatch(words) {
-                const elements = document.querySelectorAll('#preview p, #preview li, #preview h1, #preview h2, #preview h3');
+                const elements = document.querySelectorAll('#preview p, #preview h1, #preview h2, #preview h3, #preview li');
                 let bestMatch = { element: null, score: 0 };
-                
+
                 elements.forEach(el => {
                     const text = el.textContent.toLowerCase();
                     let score = 0;
-                    
-                    words.forEach((word, i) => {
+
+                    words.forEach((word, index) => {
                         if (word.length >= config.minWordLength && text.includes(word)) {
-                            score += config.wordWeights[i] || 0;
+                            score += config.wordWeights[index] || 0;
                         }
                     });
-                    
+
                     if (score > bestMatch.score) {
                         bestMatch = { element: el, score: score };
                     }
                 });
-                
+
                 return bestMatch.element;
             }
-            
+
+            // Подсветка и центрирование
             function processWords(words) {
                 document.querySelectorAll('.sufler-highlight, .sufler-active-block').forEach(el => {
                     el.classList.remove('sufler-highlight', 'sufler-active-block');
                 });
+
+                const targetElement = findBestMatch(words);
                 
-                const target = findBestMatch(words);
-                if (target) {
-                    target.classList.add('sufler-active-block');
-                    let html = target.innerHTML;
+                if (targetElement) {
+                    targetElement.classList.add('sufler-active-block');
                     
+                    let newHTML = targetElement.innerHTML;
                     words.forEach(word => {
                         if (word.length >= config.minWordLength) {
-                            html = html.replace(
+                            newHTML = newHTML.replace(
                                 new RegExp(`(${word})`, 'gi'),
                                 '<span class="sufler-highlight">$1</span>'
                             );
                         }
                     });
-                    
-                    target.innerHTML = html;
-                    centerElement(target);
-                    statusEl.textContent = `Найдено: "${words.join(' ')}"`;
+                    targetElement.innerHTML = newHTML;
+
+                    centerElement(targetElement);
+                    statusEl.textContent = `Найдено: "${words.slice(-1)[0]}"`;
+                } else {
+                    statusEl.textContent = 'Не найдено совпадений';
                 }
             }
-            
+
+            // Инициализация распознавания
             function initRecognition() {
                 if (!('webkitSpeechRecognition' in window)) {
-                    statusEl.textContent = 'Распознавание не поддерживается';
+                    statusEl.textContent = 'Распознавание речи не поддерживается';
                     suflerToggle.disabled = true;
                     return null;
                 }
-                
+
                 const rec = new webkitSpeechRecognition();
                 rec.continuous = true;
                 rec.interimResults = true;
                 rec.lang = 'ru-RU';
-                
-                rec.onresult = (event) => {
+
+                rec.onresult = function(event) {
                     const results = Array.from(event.results);
                     const last = results[results.length - 1];
                     
                     if (last.isFinal) {
                         const transcript = last[0].transcript.trim();
-                        const newWords = transcript.split(/\s+/)
-                            .filter(w => w.length >= config.minWordLength)
-                            .map(w => w.toLowerCase());
+                        const confidence = last[0].confidence;
                         
-                        wordsBuffer = [...wordsBuffer, ...newWords].slice(-20);
-                        
-                        if (wordsBuffer.length - lastProcessedIndex >= config.wordsBufferSize) {
-                            const wordsToProcess = wordsBuffer.slice(lastProcessedIndex);
-                            lastProcessedIndex = wordsBuffer.length;
-                            processWords(wordsToProcess);
+                        if (confidence >= config.confidenceThreshold) {
+                            const words = transcript.split(/\s+/)
+                                .filter(w => w.length >= config.minWordLength)
+                                .slice(-config.wordWeights.length);
+                            
+                            if (words.length > 0) {
+                                processWords(words);
+                            }
                         }
                     }
                 };
-                
-                rec.onerror = (event) => {
-                    console.log('Ошибка:', event.error);
-                    if (isActive) setTimeout(() => recognition.start(), 300);
+
+                rec.onerror = function(event) {
+                    statusEl.textContent = `Ошибка: ${event.error}`;
+                    stopRecognition();
                 };
-                
-                rec.onend = () => {
-                    if (isActive) recognition.start();
+
+                rec.onend = function() {
+                    if (isActive) {
+                        setTimeout(startRecognition, 300);
+                    }
                 };
-                
+
                 return rec;
             }
-            
+
             function startRecognition() {
-                if (!recognition) recognition = initRecognition();
-                if (!recognition) return;
-                
+                if (!recognition) {
+                    recognition = initRecognition();
+                    if (!recognition) return;
+                }
+
                 try {
                     recognition.start();
                     isActive = true;
                     suflerToggle.textContent = '🔴 Выключить';
                     suflerToggle.style.background = '#f44336';
                     statusEl.textContent = 'Слушаю...';
-                    wordsBuffer = [];
-                    lastProcessedIndex = 0;
                 } catch (error) {
+                    statusEl.textContent = 'Ошибка доступа к микрофону';
                     console.error(error);
-                    setTimeout(startRecognition, 500);
                 }
             }
-            
+
             function stopRecognition() {
+                if (recognition) {
+                    recognition.stop();
+                }
                 isActive = false;
-                if (recognition) recognition.stop();
                 suflerToggle.textContent = '🎤 Включить';
                 suflerToggle.style.background = '#4CAF50';
                 statusEl.textContent = 'Микрофон выключен';
             }
-            
-            // Управление
-            suflerToggle.addEventListener('click', () => {
-                if (isActive) stopRecognition();
-                else startRecognition();
-            });
-            
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'Pause') {
-                    e.preventDefault();
-                    if (isActive) stopRecognition();
-                    else startRecognition();
+
+            // Управление суфлером
+            suflerToggle.addEventListener('click', function() {
+                if (isActive) {
+                    stopRecognition();
+                } else {
+                    startRecognition();
+                    window.focus(); // Фокусируем окно браузера
                 }
             });
-        })();
+
+            // Управление редактором
+            toggleEditorBtn.addEventListener('click', function() {
+                editorContainer.classList.toggle('hidden-editor');
+                preview.classList.toggle('full-width-preview');
+                
+                if (editorContainer.classList.contains('hidden-editor')) {
+                    toggleEditorBtn.textContent = '📝 Показать редактор';
+                } else {
+                    toggleEditorBtn.textContent = '📝 Скрыть редактор';
+                }
+            });
+
+            // Делаем страницу "фокусируемой" для глобальных горячих клавиш
+            document.body.tabIndex = 0;
+            document.body.style.outline = 'none'; // Убираем визуальный эффект фокуса
+
+            // Глобальные горячие клавиши (работают даже если окно не в фокусе)
+            window.addEventListener('keydown', function(e) {
+                // Pause/Break - управление суфлером
+                if (e.code === 'Pause') {
+                    e.preventDefault();
+                    if (isActive) {
+                        stopRecognition();
+                    } else {
+                        startRecognition();
+                        window.focus(); // Перехватываем фокус
+                    }
+                }
+                // Ctrl+E - управление редактором
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    toggleEditorBtn.click();
+                }
+            });
+        }
+
+        // Инициализация после загрузки контента
+        const observer = new MutationObserver(function(mutations) {
+            initIntegratedSufler();
+            observer.disconnect();
+        });
+        observer.observe(document.getElementById('preview'), { childList: true });
+    })();
     </script>
 </body>
 </html>
