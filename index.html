@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Умный автосуфлер V3</title>
+    <title>Автосуфлер с интервальным поиском</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -249,13 +249,11 @@
         
         // Конфигурация
         const config = {
-            wordWeights: [0.9, 0.7, 0.5, 0.3, 0.1], // Веса слов (от последнего к первому)
-            minWordLength: 3, // Минимальная длина слова для учета
-            confidenceThreshold: 0.2, // Пониженный порог уверенности
-            wordsToProcess: 5, // Обрабатывать каждые N слов
-            maxLinesToSearch: 4, // Расширенная область поиска
-            scrollDuration: 600, // Ускоренный скролл
-            targetPosition: 0.3 // Позиция на экране
+            searchInterval: 3000, // Поиск каждые 3 секунды
+            wordsToSearch: 5,    // Количество последних слов для поиска
+            minWordLength: 3,    // Минимальная длина слова
+            scrollDuration: 600, // Длительность скролла
+            targetPosition: 0.3  // Позиция на экране
         };
         
         // Элементы интерфейса
@@ -271,30 +269,26 @@
         let recognition;
         let isActive = false;
         let wordsBuffer = [];
-        let lastProcessedIndex = 0;
         let lastFoundElement = null;
         let isDarkTheme = false;
+        let searchTimer = null;
         
         // Инициализация редактора
         function initEditor() {
-            // Загрузка сохраненного текста
             if (localStorage.getItem('suflerContent')) {
                 editor.value = localStorage.getItem('suflerContent');
                 updatePreview();
             }
             
-            // Загрузка темы
             if (localStorage.getItem('darkTheme') === 'true') {
                 toggleTheme();
             }
             
-            // Обработка ввода текста
             editor.addEventListener('input', () => {
                 updatePreview();
                 localStorage.setItem('suflerContent', editor.value);
             });
             
-            // Автоматический размер текстового поля
             function adjustTextarea() {
                 editor.style.height = 'auto';
                 editor.style.height = editor.scrollHeight + 'px';
@@ -302,7 +296,6 @@
             editor.addEventListener('input', adjustTextarea);
             adjustTextarea();
             
-            // Фокус на редакторе при загрузке
             window.addEventListener('load', () => editor.focus());
         }
         
@@ -333,46 +326,36 @@
         
         // Распознавание речи
         function initSpeechRecognition() {
-            // Проверка поддержки
             if (!('webkitSpeechRecognition' in window)) {
-                statusEl.textContent = 'Распознавание речи не поддерживается вашим браузером';
+                statusEl.textContent = 'Распознавание речи не поддерживается';
                 suflerToggle.disabled = true;
                 return;
             }
             
-            // Создаем экземпляр распознавания
             recognition = new webkitSpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'ru-RU';
             
-            // Обработка результатов
             recognition.onresult = (event) => {
                 const results = Array.from(event.results);
                 const last = results[results.length - 1];
                 
                 if (last.isFinal) {
                     const transcript = last[0].transcript.trim();
-                    const confidence = last[0].confidence;
+                    const newWords = transcript.toLowerCase()
+                        .split(/\s+/)
+                        .filter(w => w.length >= config.minWordLength);
                     
-                    if (confidence >= config.confidenceThreshold) {
-                        const newWords = transcript.toLowerCase()
-                            .split(/\s+/)
-                            .filter(w => w.length >= config.minWordLength);
-                        
-                        if (newWords.length > 0) {
-                            wordsBuffer = [...wordsBuffer, ...newWords];
-                            processNewWords();
-                        }
+                    if (newWords.length > 0) {
+                        wordsBuffer = [...wordsBuffer, ...newWords].slice(-20);
                     }
                 }
             };
             
-            // Обработка ошибок
             recognition.onerror = (event) => {
                 if (event.error !== 'no-speech') {
                     statusEl.textContent = `Ошибка: ${event.error}`;
-                    console.error('Ошибка распознавания:', event.error);
                 }
                 if (isActive) restartRecognition();
             };
@@ -389,103 +372,54 @@
                     try {
                         recognition.start();
                     } catch (e) {
-                        console.error('Ошибка перезапуска:', e);
                         setTimeout(restartRecognition, 300);
                     }
                 }
             }, 100);
         }
         
-        // Поиск ближайших элементов
-        function getNearbyElements() {
-            const allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
+        // Поиск совпадений (упрощенная версия)
+        function findMatches() {
+            if (wordsBuffer.length === 0) return;
             
-            if (!lastFoundElement || !allElements.includes(lastFoundElement)) {
-                return allElements.slice(0, config.maxLinesToSearch + 2);
-            }
-            
-            const currentIndex = allElements.indexOf(lastFoundElement);
-            const start = Math.max(0, currentIndex - 1);
-            const end = Math.min(allElements.length, currentIndex + config.maxLinesToSearch + 1);
-            
-            return allElements.slice(start, end);
-        }
-        
-        // Поиск лучшего совпадения (оптимизированная версия)
-        function findBestMatch(words) {
-            const elements = getNearbyElements();
-            let bestMatch = { element: null, score: 0 };
-            const searchWords = words.slice(-config.wordWeights.length).reverse();
+            const searchWords = wordsBuffer.slice(-config.wordsToSearch);
+            const elements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
+            let bestElement = null;
+            let maxMatches = 0;
             
             elements.forEach(el => {
                 const text = el.textContent.toLowerCase();
-                let score = 0;
-                let matchedWords = 0;
+                let matches = 0;
                 
-                searchWords.forEach((word, index) => {
-                    if (word.length >= config.minWordLength && text.includes(word)) {
-                        const weight = config.wordWeights[index] || 0;
-                        // Учитываем количество вхождений слова
-                        const matches = (text.match(new RegExp(word, 'g')) || []).length;
-                        score += weight * (1 + matches * 0.2);
-                        matchedWords++;
-                    }
+                searchWords.forEach(word => {
+                    if (text.includes(word)) matches++;
                 });
                 
-                if (matchedWords > 0) {
-                    // Дополнительный бонус за несколько совпадений
-                    score *= (1 + matchedWords * 0.3);
-                    
-                    // Предпочтение текущему/следующему элементу
-                    if (el === lastFoundElement) score *= 1.2;
-                    
-                    if (score > bestMatch.score) {
-                        bestMatch = { element: el, score: score };
-                    }
+                if (matches > maxMatches) {
+                    maxMatches = matches;
+                    bestElement = el;
                 }
             });
             
-            return bestMatch.score > 0.5 ? bestMatch.element : null;
-        }
-        
-        // Обработка новых слов (оптимизированная)
-        function processNewWords() {
-            const unprocessedCount = wordsBuffer.length - lastProcessedIndex;
-            
-            if (unprocessedCount >= config.wordsToProcess) {
-                const processingStart = Math.max(0, wordsBuffer.length - config.wordsToProcess * 2);
-                const wordsToProcess = wordsBuffer.slice(processingStart);
-                
-                const targetElement = findBestMatch(wordsToProcess);
-                if (targetElement) {
-                    lastFoundElement = targetElement;
-                    highlightMatches(targetElement, wordsToProcess);
-                    centerElement(targetElement);
-                    statusEl.textContent = `Найдено: "${wordsToProcess.slice(-3).join(' ')}..."`;
-                } else {
-                    statusEl.textContent = 'Ищу совпадения...';
-                }
-                
-                lastProcessedIndex = wordsBuffer.length;
+            if (bestElement) {
+                highlightMatches(bestElement, searchWords);
+                centerElement(bestElement);
+                statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
+                lastFoundElement = bestElement;
+            } else {
+                statusEl.textContent = 'Совпадений не найдено';
             }
         }
         
-        // Подсветка совпадений (исправленная)
+        // Подсветка совпадений
         function highlightMatches(element, words) {
-            // Сбрасываем предыдущую подсветку
-            document.querySelectorAll('.sufler-highlight').forEach(el => {
-                el.classList.remove('sufler-highlight');
+            document.querySelectorAll('.sufler-highlight, .sufler-active-block').forEach(el => {
+                el.classList.remove('sufler-highlight', 'sufler-active-block');
             });
             
-            // Убираем подсветку активного блока у всех элементов
-            document.querySelectorAll('.sufler-active-block').forEach(el => {
-                el.classList.remove('sufler-active-block');
-            });
-            
-            // Добавляем новую подсветку
             element.classList.add('sufler-active-block');
             let newHTML = element.innerHTML;
-            const uniqueWords = [...new Set(words.slice(-5).reverse())];
+            const uniqueWords = [...new Set(words)];
             
             uniqueWords.forEach(word => {
                 if (word.length >= config.minWordLength) {
@@ -497,7 +431,7 @@
             element.innerHTML = newHTML;
         }
         
-        // Экранирование спецсимволов для regex
+        // Экранирование спецсимволов
         function escapeRegExp(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
@@ -516,12 +450,28 @@
             });
         }
         
+        // Запуск/остановка поиска
+        function startSearching() {
+            if (searchTimer) clearInterval(searchTimer);
+            findMatches(); // Сразу выполнить поиск
+            searchTimer = setInterval(findMatches, config.searchInterval);
+        }
+        
+        function stopSearching() {
+            if (searchTimer) {
+                clearInterval(searchTimer);
+                searchTimer = null;
+            }
+        }
+        
         // Управление суфлером
         function toggleRecognition() {
             if (isActive) {
                 stopRecognition();
+                stopSearching();
             } else {
                 startRecognition();
+                startSearching();
             }
         }
         
@@ -535,14 +485,11 @@
                 suflerToggle.innerHTML = '🔴 Остановить';
                 statusEl.textContent = 'Слушаю...';
                 wordsBuffer = [];
-                lastProcessedIndex = 0;
                 lastFoundElement = null;
                 
-                // Фокус на окне браузера
                 window.focus();
             } catch (error) {
                 statusEl.textContent = 'Ошибка доступа к микрофону';
-                console.error(error);
                 setTimeout(startRecognition, 500);
             }
         }
@@ -561,19 +508,16 @@
         // Горячие клавиши
         function initHotkeys() {
             document.addEventListener('keydown', (e) => {
-                // Pause/Break - управление суфлером
                 if (e.code === 'Pause') {
                     e.preventDefault();
                     toggleRecognition();
                 }
                 
-                // Ctrl+E - управление редактором
                 if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                     e.preventDefault();
                     toggleEditorBtn.click();
                 }
                 
-                // Ctrl+T - переключение темы
                 if ((e.ctrlKey || e.metaKey) && e.key === 't') {
                     e.preventDefault();
                     toggleTheme();
@@ -590,7 +534,6 @@
             suflerToggle.addEventListener('click', toggleRecognition);
             toggleThemeBtn.addEventListener('click', toggleTheme);
             
-            // Инициализация preview после загрузки контента
             const observer = new MutationObserver(() => {
                 if (preview.innerHTML.trim()) {
                     observer.disconnect();
