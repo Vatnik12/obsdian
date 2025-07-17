@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Автосуфлер V5 (мгновенный)</title>
+    <title>Автосуфлер V6 (локальный поиск)</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -267,9 +267,10 @@
         // Конфигурация
         const config = {
             wordsToUse: 3,        // Использовать последние 3 слова
-            minWordLength: 2,      // Минимальная длина слова
-            scrollDuration: 500,   // Длительность скролла
-            targetPosition: 0.3    // Позиция на экране
+            minWordLength: 2,     // Минимальная длина слова
+            scrollDuration: 500,  // Длительность скролла
+            targetPosition: 0.3,  // Позиция на экране
+            searchRadius: 5       // Количество строк для поиска (вверх и вниз)
         };
         
         // Элементы интерфейса
@@ -290,6 +291,7 @@
         let lastFoundElement = null;
         let isDarkTheme = false;
         let isPanelHidden = true;
+        let allElements = [];
         
         // Инициализация редактора
         function initEditor() {
@@ -320,6 +322,7 @@
         // Обновление preview
         function updatePreview() {
             preview.innerHTML = marked.parse(editor.value);
+            allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
         }
         
         // Управление редактором
@@ -389,17 +392,30 @@
             };
         }
         
+        // Получить ближайшие элементы для поиска
+        function getNearbyElements() {
+            if (!lastFoundElement || !allElements.includes(lastFoundElement)) {
+                return allElements.slice(0, config.searchRadius * 2);
+            }
+            
+            const currentIndex = allElements.indexOf(lastFoundElement);
+            const start = Math.max(0, currentIndex - config.searchRadius);
+            const end = Math.min(allElements.length, currentIndex + config.searchRadius + 1);
+            
+            return allElements.slice(start, end);
+        }
+        
         // Мгновенная обработка речи
         function processSpeech() {
             if (wordsBuffer.length === 0) return;
             
             const searchWords = wordsBuffer.slice(-config.wordsToUse);
-            const elements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
+            const elementsToSearch = getNearbyElements();
             let bestElement = null;
             let maxMatches = 0;
             
             // Ищем элемент с максимальным количеством совпадений
-            elements.forEach(el => {
+            elementsToSearch.forEach(el => {
                 const text = el.textContent.toLowerCase();
                 let matches = 0;
                 
@@ -554,6 +570,7 @@
             
             const observer = new MutationObserver(() => {
                 if (preview.innerHTML.trim()) {
+                    allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
                     observer.disconnect();
                 }
             });
