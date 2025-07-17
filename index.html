@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Презентация by Vatnik</title>
+    <title>Умный автосуфлер V3</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -136,6 +136,7 @@
         
         .control-btn:hover {
             transform: translateY(-2px);
+            opacity: 0.9;
         }
         
         #suflerToggle {
@@ -188,8 +189,15 @@
         }
         
         /* Класс для скрытия редактора */
-        .hidden {
-            display: none;
+        .editor-hidden {
+            width: 0 !important;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateX(-100%);
+        }
+        
+        .preview-full-width {
+            width: 100% !important;
         }
         
         /* Адаптивность */
@@ -200,6 +208,12 @@
             
             #editor-container, #preview {
                 width: 100%;
+            }
+            
+            .editor-hidden {
+                transform: translateX(0);
+                position: absolute;
+                height: 0;
             }
         }
     </style>
@@ -235,13 +249,13 @@
         
         // Конфигурация
         const config = {
-            wordWeights: [0.8, 0.6, 0.4, 0.2, 0.1], // Веса слов (от последнего к первому)
+            wordWeights: [0.9, 0.7, 0.5, 0.3, 0.1], // Веса слов (от последнего к первому)
             minWordLength: 3, // Минимальная длина слова для учета
-            confidenceThreshold: 0.3, // Порог уверенности распознавания
-            wordsToProcess: 7, // Обрабатывать каждые N слов
-            maxLinesToSearch: 3, // Максимальное количество строк для поиска
-            scrollDuration: 800, // Длительность скролла (мс)
-            targetPosition: 0.4 // Позиция на экране (0-1)
+            confidenceThreshold: 0.2, // Пониженный порог уверенности
+            wordsToProcess: 5, // Обрабатывать каждые N слов
+            maxLinesToSearch: 4, // Расширенная область поиска
+            scrollDuration: 600, // Ускоренный скролл
+            targetPosition: 0.3 // Позиция на экране
         };
         
         // Элементы интерфейса
@@ -300,8 +314,10 @@
         // Управление редактором
         function initEditorControls() {
             toggleEditorBtn.addEventListener('click', () => {
-                editorContainer.classList.toggle('hidden');
-                toggleEditorBtn.innerHTML = editorContainer.classList.contains('hidden') 
+                editorContainer.classList.toggle('editor-hidden');
+                preview.classList.toggle('preview-full-width');
+                
+                toggleEditorBtn.innerHTML = editorContainer.classList.contains('editor-hidden') 
                     ? '📝 Показать редактор' 
                     : '📝 Скрыть редактор';
             });
@@ -344,8 +360,10 @@
                             .split(/\s+/)
                             .filter(w => w.length >= config.minWordLength);
                         
-                        wordsBuffer = [...wordsBuffer, ...newWords];
-                        processNewWords();
+                        if (newWords.length > 0) {
+                            wordsBuffer = [...wordsBuffer, ...newWords];
+                            processNewWords();
+                        }
                     }
                 }
             };
@@ -372,18 +390,18 @@
                         recognition.start();
                     } catch (e) {
                         console.error('Ошибка перезапуска:', e);
-                        setTimeout(restartRecognition, 500);
+                        setTimeout(restartRecognition, 300);
                     }
                 }
-            }, 300);
+            }, 100);
         }
         
         // Поиск ближайших элементов
         function getNearbyElements() {
-            const allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li'));
+            const allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
             
             if (!lastFoundElement || !allElements.includes(lastFoundElement)) {
-                return allElements.slice(0, 5);
+                return allElements.slice(0, config.maxLinesToSearch + 2);
             }
             
             const currentIndex = allElements.indexOf(lastFoundElement);
@@ -393,7 +411,7 @@
             return allElements.slice(start, end);
         }
         
-        // Поиск лучшего совпадения
+        // Поиск лучшего совпадения (оптимизированная версия)
         function findBestMatch(words) {
             const elements = getNearbyElements();
             let bestMatch = { element: null, score: 0 };
@@ -405,29 +423,38 @@
                 let matchedWords = 0;
                 
                 searchWords.forEach((word, index) => {
-                    if (text.includes(word)) {
-                        score += (config.wordWeights[index] || 0);
+                    if (word.length >= config.minWordLength && text.includes(word)) {
+                        const weight = config.wordWeights[index] || 0;
+                        // Учитываем количество вхождений слова
+                        const matches = (text.match(new RegExp(word, 'g')) || []).length;
+                        score += weight * (1 + matches * 0.2);
                         matchedWords++;
                     }
                 });
                 
                 if (matchedWords > 0) {
-                    score *= (1 + matchedWords * 0.2);
+                    // Дополнительный бонус за несколько совпадений
+                    score *= (1 + matchedWords * 0.3);
+                    
+                    // Предпочтение текущему/следующему элементу
+                    if (el === lastFoundElement) score *= 1.2;
+                    
                     if (score > bestMatch.score) {
                         bestMatch = { element: el, score: score };
                     }
                 }
             });
             
-            return bestMatch.element;
+            return bestMatch.score > 0.5 ? bestMatch.element : null;
         }
         
-        // Обработка новых слов
+        // Обработка новых слов (оптимизированная)
         function processNewWords() {
-            if (wordsBuffer.length - lastProcessedIndex >= config.wordsToProcess) {
-                const wordsToProcess = wordsBuffer.slice(
-                    Math.max(0, wordsBuffer.length - config.wordsToProcess)
-                );
+            const unprocessedCount = wordsBuffer.length - lastProcessedIndex;
+            
+            if (unprocessedCount >= config.wordsToProcess) {
+                const processingStart = Math.max(0, wordsBuffer.length - config.wordsToProcess * 2);
+                const wordsToProcess = wordsBuffer.slice(processingStart);
                 
                 const targetElement = findBestMatch(wordsToProcess);
                 if (targetElement) {
@@ -443,18 +470,24 @@
             }
         }
         
-        // Подсветка совпадений
+        // Подсветка совпадений (исправленная)
         function highlightMatches(element, words) {
             // Сбрасываем предыдущую подсветку
-            document.querySelectorAll('.sufler-highlight, .sufler-active-block').forEach(el => {
-                el.classList.remove('sufler-highlight', 'sufler-active-block');
+            document.querySelectorAll('.sufler-highlight').forEach(el => {
+                el.classList.remove('sufler-highlight');
+            });
+            
+            // Убираем подсветку активного блока у всех элементов
+            document.querySelectorAll('.sufler-active-block').forEach(el => {
+                el.classList.remove('sufler-active-block');
             });
             
             // Добавляем новую подсветку
             element.classList.add('sufler-active-block');
             let newHTML = element.innerHTML;
+            const uniqueWords = [...new Set(words.slice(-5).reverse())];
             
-            words.slice(-5).reverse().forEach((word, index) => {
+            uniqueWords.forEach(word => {
                 if (word.length >= config.minWordLength) {
                     const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
                     newHTML = newHTML.replace(regex, '<span class="sufler-highlight">$1</span>');
@@ -503,6 +536,7 @@
                 statusEl.textContent = 'Слушаю...';
                 wordsBuffer = [];
                 lastProcessedIndex = 0;
+                lastFoundElement = null;
                 
                 // Фокус на окне браузера
                 window.focus();
@@ -515,7 +549,10 @@
         
         function stopRecognition() {
             isActive = false;
-            if (recognition) recognition.stop();
+            if (recognition) {
+                recognition.stop();
+                recognition = null;
+            }
             suflerToggle.classList.remove('active');
             suflerToggle.innerHTML = '🎤 Включить';
             statusEl.textContent = 'Готов к работе';
@@ -559,7 +596,7 @@
                     observer.disconnect();
                 }
             });
-            observer.observe(preview, { childList: true });
+            observer.observe(preview, { childList: true, subtree: true });
         }
         
         // Запуск приложения
