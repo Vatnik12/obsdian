@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Автосуфлер V4 (авторежим)</title>
+    <title>Автосуфлер V5 (мгновенный)</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -115,11 +115,11 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             backdrop-filter: blur(5px);
             transition: all 0.3s ease;
-            transform: translateX(0);
         }
         
         .control-panel.hidden {
             transform: translateX(calc(100% + 20px));
+            opacity: 0;
         }
         
         .panel-toggle {
@@ -135,8 +135,13 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            z-index: 999;
+            z-index: 1001;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .panel-toggle.hidden {
+            transform: translateX(0);
         }
         
         .dark-theme .control-panel {
@@ -199,17 +204,6 @@
             margin-left: -13px;
         }
         
-        /* Анимации */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .pulse {
-            animation: pulse 1.5s infinite;
-        }
-        
         /* Класс для скрытия редактора */
         .editor-hidden {
             width: 0 !important;
@@ -255,8 +249,8 @@
     </div>
 
     <div class="panel-toggle">⚙️</div>
-    <div class="control-panel">
-        <button id="suflerToggle" class="control-btn pulse">
+    <div class="control-panel hidden">
+        <button id="suflerToggle" class="control-btn">
             <span>🎤 Включить суфлер</span>
         </button>
         <button id="toggleThemeBtn" class="control-btn">
@@ -272,11 +266,10 @@
         
         // Конфигурация
         const config = {
-            processInterval: 1000, // Обработка каждую секунду
             wordsToUse: 3,        // Использовать последние 3 слова
-            minWordLength: 3,     // Минимальная длина слова
-            scrollDuration: 500,  // Длительность скролла
-            targetPosition: 0.3   // Позиция на экране
+            minWordLength: 2,      // Минимальная длина слова
+            scrollDuration: 500,   // Длительность скролла
+            targetPosition: 0.3    // Позиция на экране
         };
         
         // Элементы интерфейса
@@ -296,8 +289,7 @@
         let wordsBuffer = [];
         let lastFoundElement = null;
         let isDarkTheme = false;
-        let processInterval = null;
-        let isPanelHidden = false;
+        let isPanelHidden = true;
         
         // Инициализация редактора
         function initEditor() {
@@ -308,10 +300,6 @@
             
             if (localStorage.getItem('darkTheme') === 'true') {
                 toggleTheme();
-            }
-            
-            if (localStorage.getItem('panelHidden') === 'true') {
-                togglePanel();
             }
             
             editor.addEventListener('input', () => {
@@ -359,10 +347,9 @@
             isPanelHidden = !isPanelHidden;
             controlPanel.classList.toggle('hidden');
             panelToggle.innerHTML = isPanelHidden ? '⚙️' : '❌';
-            localStorage.setItem('panelHidden', isPanelHidden);
         }
         
-        // Распознавание речи (упрощенная версия)
+        // Распознавание речи (мгновенное)
         function initSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 statusEl.textContent = 'Распознавание речи не поддерживается';
@@ -379,7 +366,8 @@
                 const results = Array.from(event.results);
                 const last = results[results.length - 1];
                 
-                if (last.isFinal) {
+                // Обрабатываем даже промежуточные результаты
+                if (last && !last.isFinal) {
                     const transcript = last[0].transcript.trim();
                     const newWords = transcript.toLowerCase()
                         .split(/\s+/)
@@ -387,6 +375,7 @@
                     
                     if (newWords.length > 0) {
                         wordsBuffer = [...wordsBuffer, ...newWords].slice(-10);
+                        processSpeech();
                     }
                 }
             };
@@ -400,25 +389,7 @@
             };
         }
         
-        // Постоянная обработка речи
-        function startProcessing() {
-            if (processInterval) clearInterval(processInterval);
-            
-            // Обработка сразу при запуске
-            processSpeech();
-            
-            // Затем каждую секунду
-            processInterval = setInterval(processSpeech, config.processInterval);
-        }
-        
-        function stopProcessing() {
-            if (processInterval) {
-                clearInterval(processInterval);
-                processInterval = null;
-            }
-        }
-        
-        // Основная функция обработки
+        // Мгновенная обработка речи
         function processSpeech() {
             if (wordsBuffer.length === 0) return;
             
@@ -517,9 +488,6 @@
                 wordsBuffer = [];
                 lastFoundElement = null;
                 
-                // Запускаем обработку речи
-                startProcessing();
-                
                 window.focus();
             } catch (error) {
                 statusEl.textContent = 'Ошибка доступа к микрофону';
@@ -533,7 +501,6 @@
                 recognition.stop();
                 recognition = null;
             }
-            stopProcessing();
             suflerToggle.classList.remove('active');
             suflerToggle.innerHTML = '🎤 Включить';
             statusEl.textContent = 'Готов к работе';
@@ -583,7 +550,7 @@
                 if (!isActive) {
                     startRecognition();
                 }
-            }, 1000);
+            }, 500);
             
             const observer = new MutationObserver(() => {
                 if (preview.innerHTML.trim()) {
