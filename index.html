@@ -353,7 +353,7 @@
         
         <div class="settings-group">
             <label for="radiusRange">Область поиска (строки): <span class="value-display" id="radiusValue">5</span></label>
-            <input type="range" id="radiusRange" min="1" max="50" value="5" step="1">
+            <input type="range" id="radiusRange" min="1" max="10" value="5" step="1">
         </div>
         
         <div class="settings-group">
@@ -369,7 +369,6 @@
         <div class="settings-actions">
             <button id="saveSettings" class="control-btn">Сохранить</button>
             <button id="resetSettings" class="control-btn">Сбросить</button>
-            <button id="defaultSettings" class="control-btn">По умолчанию</button>
         </div>
     </div>
 
@@ -401,7 +400,6 @@
         const closeSettingsBtn = document.querySelector('.close-settings');
         const saveSettingsBtn = document.getElementById('saveSettings');
         const resetSettingsBtn = document.getElementById('resetSettings');
-        const defaultSettingsBtn = document.getElementById('defaultSettings');
         const statusEl = document.getElementById('suflerStatus');
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
@@ -708,24 +706,9 @@
         }
         
         function resetSettings() {
-            const savedSettings = localStorage.getItem('suflerSettings');
-            if (savedSettings) {
-                config = JSON.parse(savedSettings);
-            }
-            hideSettings();
-        }
-        
-        function applyDefaultSettings() {
             config = {...defaultConfig};
-            modeSelect.value = config.mode;
-            wordsRange.value = config.wordsToUse;
-            wordsValue.textContent = config.wordsToUse;
-            radiusRange.value = config.searchRadius;
-            radiusValue.textContent = config.searchRadius;
-            sensitivityRange.value = config.sensitivity;
-            sensitivityValue.textContent = config.sensitivity + '%';
-            minLengthRange.value = config.minWordLength;
-            minLengthValue.textContent = config.minWordLength;
+            localStorage.removeItem('suflerSettings');
+            hideSettings();
         }
         
         // Обновление значений в реальном времени
@@ -750,7 +733,6 @@
             closeSettingsBtn.addEventListener('click', hideSettings);
             saveSettingsBtn.addEventListener('click', saveSettings);
             resetSettingsBtn.addEventListener('click', resetSettings);
-            defaultSettingsBtn.addEventListener('click', applyDefaultSettings);
         }
         
         // Горячие клавиши
