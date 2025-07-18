@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Автосуфлер V6 (локальный поиск)</title>
+    <title>Автосуфлер PRO (настраиваемый)</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -20,6 +20,7 @@
             --preview-bg-dark: #252525;
             --panel-bg-light: rgba(0,0,0,0.85);
             --panel-bg-dark: rgba(40,40,40,0.95);
+            --settings-bg: rgba(30,30,30,0.95);
         }
         
         body {
@@ -115,6 +116,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             backdrop-filter: blur(5px);
             transition: all 0.3s ease;
+            width: 250px;
         }
         
         .control-panel.hidden {
@@ -182,6 +184,10 @@
             background: #555;
         }
         
+        #settingsBtn {
+            background: #9c27b0;
+        }
+        
         #suflerStatus {
             margin-top: 5px;
             font-size: 14px;
@@ -216,6 +222,68 @@
             width: 100% !important;
         }
         
+        /* Настройки */
+        .settings-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--settings-bg);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1100;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+        
+        .settings-panel h3 {
+            margin-top: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+        
+        .settings-group {
+            margin-bottom: 15px;
+        }
+        
+        .settings-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .settings-group input[type="range"] {
+            width: 100%;
+        }
+        
+        .settings-group .value-display {
+            font-size: 12px;
+            color: #aaa;
+            text-align: right;
+        }
+        
+        .settings-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .close-settings {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
         /* Адаптивность */
         @media (max-width: 768px) {
             #app {
@@ -230,6 +298,10 @@
                 transform: translateX(0);
                 position: absolute;
                 height: 0;
+            }
+            
+            .settings-panel {
+                width: 90%;
             }
         }
     </style>
@@ -256,7 +328,48 @@
         <button id="toggleThemeBtn" class="control-btn">
             <span>🌓 Тёмная тема</span>
         </button>
+        <button id="settingsBtn" class="control-btn">
+            <span>⚙️ Настройки</span>
+        </button>
         <div id="suflerStatus">Готов к работе</div>
+    </div>
+
+    <div class="settings-panel">
+        <button class="close-settings">×</button>
+        <h3>Настройки суфлера</h3>
+        
+        <div class="settings-group">
+            <label for="modeSelect">Режим работы:</label>
+            <select id="modeSelect" class="control-btn" style="width:100%">
+                <option value="highlight">Только подсветка</option>
+                <option value="highlight-scroll">Подсветка + скролл</option>
+            </select>
+        </div>
+        
+        <div class="settings-group">
+            <label for="wordsRange">Количество слов для поиска: <span class="value-display" id="wordsValue">3</span></label>
+            <input type="range" id="wordsRange" min="1" max="5" value="3" step="1">
+        </div>
+        
+        <div class="settings-group">
+            <label for="radiusRange">Область поиска (строки): <span class="value-display" id="radiusValue">5</span></label>
+            <input type="range" id="radiusRange" min="1" max="10" value="5" step="1">
+        </div>
+        
+        <div class="settings-group">
+            <label for="sensitivityRange">Чувствительность: <span class="value-display" id="sensitivityValue">50%</span></label>
+            <input type="range" id="sensitivityRange" min="10" max="90" value="50" step="10">
+        </div>
+        
+        <div class="settings-group">
+            <label for="minLengthRange">Мин. длина слова: <span class="value-display" id="minLengthValue">2</span></label>
+            <input type="range" id="minLengthRange" min="1" max="5" value="2" step="1">
+        </div>
+        
+        <div class="settings-actions">
+            <button id="saveSettings" class="control-btn">Сохранить</button>
+            <button id="resetSettings" class="control-btn">Сбросить</button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
@@ -264,14 +377,17 @@
     (function() {
         'use strict';
         
-        // Конфигурация
-        const config = {
-            wordsToUse: 3,        // Использовать последние 3 слова
-            minWordLength: 2,     // Минимальная длина слова
-            scrollDuration: 500,  // Длительность скролла
-            targetPosition: 0.3,  // Позиция на экране
-            searchRadius: 5       // Количество строк для поиска (вверх и вниз)
+        // Конфигурация по умолчанию
+        const defaultConfig = {
+            mode: 'highlight-scroll',
+            wordsToUse: 3,
+            searchRadius: 5,
+            sensitivity: 50,
+            minWordLength: 2
         };
+        
+        // Текущая конфигурация
+        let config = {...defaultConfig};
         
         // Элементы интерфейса
         const editor = document.getElementById('editor');
@@ -280,9 +396,25 @@
         const suflerToggle = document.getElementById('suflerToggle');
         const toggleEditorBtn = document.getElementById('toggleEditorBtn');
         const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const closeSettingsBtn = document.querySelector('.close-settings');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+        const resetSettingsBtn = document.getElementById('resetSettings');
         const statusEl = document.getElementById('suflerStatus');
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
+        const settingsPanel = document.querySelector('.settings-panel');
+        
+        // Элементы настроек
+        const modeSelect = document.getElementById('modeSelect');
+        const wordsRange = document.getElementById('wordsRange');
+        const wordsValue = document.getElementById('wordsValue');
+        const radiusRange = document.getElementById('radiusRange');
+        const radiusValue = document.getElementById('radiusValue');
+        const sensitivityRange = document.getElementById('sensitivityRange');
+        const sensitivityValue = document.getElementById('sensitivityValue');
+        const minLengthRange = document.getElementById('minLengthRange');
+        const minLengthValue = document.getElementById('minLengthValue');
         
         // Состояние приложения
         let recognition;
@@ -303,6 +435,9 @@
             if (localStorage.getItem('darkTheme') === 'true') {
                 toggleTheme();
             }
+            
+            // Загрузка настроек
+            loadSettings();
             
             editor.addEventListener('input', () => {
                 updatePreview();
@@ -423,16 +558,24 @@
                     if (text.includes(word)) matches++;
                 });
                 
-                if (matches > maxMatches || (matches === maxMatches && el === lastFoundElement)) {
+                // Учитываем чувствительность
+                const matchThreshold = Math.ceil((config.sensitivity / 100) * searchWords.length);
+                
+                if (matches >= matchThreshold && matches > maxMatches) {
                     maxMatches = matches;
                     bestElement = el;
                 }
             });
             
             // Если нашли подходящий элемент
-            if (bestElement && maxMatches > 0) {
+            if (bestElement) {
                 highlightMatches(bestElement, searchWords);
-                centerElement(bestElement);
+                
+                // Скроллим только если выбран соответствующий режим
+                if (config.mode === 'highlight-scroll') {
+                    centerElement(bestElement);
+                }
+                
                 statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
                 lastFoundElement = bestElement;
             }
@@ -475,7 +618,7 @@
             
             const elementRect = element.getBoundingClientRect();
             const targetScrollPos = elementRect.top + window.pageYOffset - 
-                                  (window.innerHeight * config.targetPosition);
+                                  (window.innerHeight * 0.3);
             
             window.scrollTo({
                 top: targetScrollPos,
@@ -522,6 +665,76 @@
             statusEl.textContent = 'Готов к работе';
         }
         
+        // Настройки
+        function showSettings() {
+            // Заполняем текущие значения
+            modeSelect.value = config.mode;
+            wordsRange.value = config.wordsToUse;
+            wordsValue.textContent = config.wordsToUse;
+            radiusRange.value = config.searchRadius;
+            radiusValue.textContent = config.searchRadius;
+            sensitivityRange.value = config.sensitivity;
+            sensitivityValue.textContent = config.sensitivity + '%';
+            minLengthRange.value = config.minWordLength;
+            minLengthValue.textContent = config.minWordLength;
+            
+            settingsPanel.style.display = 'block';
+        }
+        
+        function hideSettings() {
+            settingsPanel.style.display = 'none';
+        }
+        
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('suflerSettings');
+            if (savedSettings) {
+                config = {...defaultConfig, ...JSON.parse(savedSettings)};
+            }
+        }
+        
+        function saveSettings() {
+            config = {
+                mode: modeSelect.value,
+                wordsToUse: parseInt(wordsRange.value),
+                searchRadius: parseInt(radiusRange.value),
+                sensitivity: parseInt(sensitivityRange.value),
+                minWordLength: parseInt(minLengthRange.value)
+            };
+            
+            localStorage.setItem('suflerSettings', JSON.stringify(config));
+            hideSettings();
+        }
+        
+        function resetSettings() {
+            config = {...defaultConfig};
+            localStorage.removeItem('suflerSettings');
+            hideSettings();
+        }
+        
+        // Обновление значений в реальном времени
+        function initSettingsEvents() {
+            wordsRange.addEventListener('input', () => {
+                wordsValue.textContent = wordsRange.value;
+            });
+            
+            radiusRange.addEventListener('input', () => {
+                radiusValue.textContent = radiusRange.value;
+            });
+            
+            sensitivityRange.addEventListener('input', () => {
+                sensitivityValue.textContent = sensitivityRange.value + '%';
+            });
+            
+            minLengthRange.addEventListener('input', () => {
+                minLengthValue.textContent = minLengthRange.value;
+            });
+            
+            settingsBtn.addEventListener('click', showSettings);
+            closeSettingsBtn.addEventListener('click', hideSettings);
+            saveSettingsBtn.addEventListener('click', saveSettings);
+            resetSettingsBtn.addEventListener('click', resetSettings);
+        }
+        
         // Горячие клавиши
         function initHotkeys() {
             document.addEventListener('keydown', (e) => {
@@ -548,6 +761,12 @@
                     e.preventDefault();
                     togglePanel();
                 }
+                
+                // Ctrl+, - открыть настройки
+                if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+                    e.preventDefault();
+                    showSettings();
+                }
             });
         }
         
@@ -555,6 +774,7 @@
         function initApp() {
             initEditor();
             initEditorControls();
+            initSettingsEvents();
             initHotkeys();
             
             suflerToggle.addEventListener('click', toggleRecognition);
