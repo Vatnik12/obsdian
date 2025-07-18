@@ -353,7 +353,7 @@
         
         <div class="settings-group">
             <label for="radiusRange">Область поиска (строки): <span class="value-display" id="radiusValue">5</span></label>
-            <input type="range" id="radiusRange" min="1" max="10" value="5" step="1">
+            <input type="range" id="radiusRange" min="1" max="50" value="5" step="1">
         </div>
         
         <div class="settings-group">
@@ -531,11 +531,6 @@
         
         // Получить ближайшие элементы для поиска
         function getNearbyElements() {
-            // В режиме "Подсветка + скролл" ищем по всей странице без ограничений
-            if (config.mode === 'highlight-scroll') {
-                return allElements;
-            }
-            
             if (!lastFoundElement || !allElements.includes(lastFoundElement)) {
                 return allElements.slice(0, config.searchRadius * 2);
             }
