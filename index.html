@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Автосуфлер PRO (настраиваемый)</title>
+    <title>Прозрачный автосуфлер PRO</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -12,49 +12,35 @@
             --highlight: #FFFF00;
             --text-light: #333;
             --text-dark: #f0f0f0;
-            --bg-light: #f5f5f5;
-            --bg-dark: #1a1a1a;
-            --editor-bg-light: white;
-            --editor-bg-dark: #2d2d2d;
-            --preview-bg-light: white;
-            --preview-bg-dark: #252525;
-            --panel-bg-light: rgba(0,0,0,0.85);
-            --panel-bg-dark: rgba(40,40,40,0.95);
-            --settings-bg: rgba(30,30,30,0.95);
+            --panel-bg: rgba(30, 30, 30, 0.7);
+            --settings-bg: rgba(30, 30, 30, 0.9);
         }
         
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: var(--bg-light);
+            background-color: transparent !important;
             color: var(--text-light);
+            overflow: hidden;
             transition: all 0.3s ease;
-        }
-        
-        body.dark-theme {
-            background-color: var(--bg-dark);
-            color: var(--text-dark);
         }
         
         #app {
             display: flex;
             min-height: 100vh;
             position: relative;
+            background-color: transparent;
         }
         
-        /* Стили редактора */
+        /* Стили редактора - полупрозрачные */
         #editor-container {
             width: 40%;
-            background: var(--editor-bg-light);
+            background: rgba(255, 255, 255, 0.8);
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
             transition: all 0.3s ease;
-        }
-        
-        .dark-theme #editor-container {
-            background: var(--editor-bg-dark);
         }
         
         .editor-header {
@@ -74,39 +60,41 @@
             border: none;
             resize: none;
             outline: none;
-            background: var(--editor-bg-light);
+            background: rgba(255, 255, 255, 0.7);
             color: var(--text-light);
             transition: all 0.3s ease;
         }
         
-        .dark-theme #editor {
-            background: var(--editor-bg-dark);
-            color: var(--text-dark);
-        }
-        
-        /* Стили просмотра */
+        /* Стили просмотра - полупрозрачные */
         #preview {
             flex: 1;
             padding: 40px;
             font-size: 22px;
             line-height: 1.6;
             overflow-y: auto;
-            background: var(--preview-bg-light);
+            background: rgba(255, 255, 255, 0.5);
             transition: all 0.3s ease;
         }
         
-        .dark-theme #preview {
-            background: var(--preview-bg-dark);
-            color: var(--text-dark);
+        /* Класс для скрытия редактора */
+        .editor-hidden {
+            width: 0 !important;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateX(-100%);
         }
         
-        /* Панель управления */
+        .preview-full-width {
+            width: 100% !important;
+        }
+        
+        /* Панель управления - полупрозрачная */
         .control-panel {
             position: fixed;
             bottom: 20px;
             right: 20px;
             z-index: 1000;
-            background: var(--panel-bg-light);
+            background: var(--panel-bg);
             color: white;
             padding: 15px;
             border-radius: 10px;
@@ -144,10 +132,6 @@
         
         .panel-toggle.hidden {
             transform: translateX(0);
-        }
-        
-        .dark-theme .control-panel {
-            background: var(--panel-bg-dark);
         }
         
         .control-btn {
@@ -203,23 +187,11 @@
         }
         
         .sufler-active-block {
-            background: rgba(173, 216, 230, 0.3) !important;
+            background: rgba(173, 216, 230, 0.5) !important;
             transition: all 0.3s ease !important;
             border-left: 3px solid var(--secondary);
             padding-left: 10px;
             margin-left: -13px;
-        }
-        
-        /* Класс для скрытия редактора */
-        .editor-hidden {
-            width: 0 !important;
-            overflow: hidden;
-            opacity: 0;
-            transform: translateX(-100%);
-        }
-        
-        .preview-full-width {
-            width: 100% !important;
         }
         
         /* Настройки */
@@ -377,6 +349,45 @@
     (function() {
         'use strict';
         
+        // Для прозрачного режима нужно запускать через специальное окно
+        if (window.location.href.indexOf('transparent=true') === -1) {
+            const newWindow = window.open('', '_blank', `
+                width=${window.screen.width},
+                height=${window.screen.height},
+                top=0,
+                left=0
+            `);
+            
+            if (newWindow) {
+                newWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Прозрачный автосуфлер PRO</title>
+                        <style>
+                            body { margin: 0; padding: 0; background: transparent; }
+                            iframe {
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                border: none;
+                                background: transparent;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <iframe src="${window.location.href}?transparent=true" allowtransparency="true"></iframe>
+                    </body>
+                    </html>
+                `);
+                newWindow.document.close();
+                window.close();
+                return;
+            }
+        }
+        
         // Конфигурация по умолчанию
         const defaultConfig = {
             mode: 'highlight-scroll',
@@ -421,8 +432,6 @@
         let isActive = false;
         let wordsBuffer = [];
         let lastFoundElement = null;
-        let isDarkTheme = false;
-        let isPanelHidden = true;
         let allElements = [];
         
         // Инициализация редактора
@@ -430,10 +439,6 @@
             if (localStorage.getItem('suflerContent')) {
                 editor.value = localStorage.getItem('suflerContent');
                 updatePreview();
-            }
-            
-            if (localStorage.getItem('darkTheme') === 'true') {
-                toggleTheme();
             }
             
             // Загрузка настроек
@@ -472,19 +477,10 @@
             });
         }
         
-        // Переключение темы
-        function toggleTheme() {
-            isDarkTheme = !isDarkTheme;
-            document.body.classList.toggle('dark-theme');
-            localStorage.setItem('darkTheme', isDarkTheme);
-            toggleThemeBtn.innerHTML = isDarkTheme ? '🌞 Светлая тема' : '🌓 Тёмная тема';
-        }
-        
         // Переключение панели
         function togglePanel() {
-            isPanelHidden = !isPanelHidden;
             controlPanel.classList.toggle('hidden');
-            panelToggle.innerHTML = isPanelHidden ? '⚙️' : '❌';
+            panelToggle.innerHTML = controlPanel.classList.contains('hidden') ? '⚙️' : '❌';
         }
         
         // Распознавание речи (мгновенное)
@@ -750,12 +746,6 @@
                     toggleEditorBtn.click();
                 }
                 
-                // Ctrl+T - переключение темы
-                if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-                    e.preventDefault();
-                    toggleTheme();
-                }
-                
                 // Ctrl+P - переключение панели
                 if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
                     e.preventDefault();
@@ -778,7 +768,6 @@
             initHotkeys();
             
             suflerToggle.addEventListener('click', toggleRecognition);
-            toggleThemeBtn.addEventListener('click', toggleTheme);
             panelToggle.addEventListener('click', togglePanel);
             
             // Автозапуск суфлера
