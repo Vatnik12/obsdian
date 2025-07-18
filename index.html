@@ -369,6 +369,7 @@
         <div class="settings-actions">
             <button id="saveSettings" class="control-btn">Сохранить</button>
             <button id="resetSettings" class="control-btn">Сбросить</button>
+            <button id="defaultSettings" class="control-btn">По умолчанию</button>
         </div>
     </div>
 
@@ -400,6 +401,7 @@
         const closeSettingsBtn = document.querySelector('.close-settings');
         const saveSettingsBtn = document.getElementById('saveSettings');
         const resetSettingsBtn = document.getElementById('resetSettings');
+        const defaultSettingsBtn = document.getElementById('defaultSettings');
         const statusEl = document.getElementById('suflerStatus');
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
@@ -529,6 +531,11 @@
         
         // Получить ближайшие элементы для поиска
         function getNearbyElements() {
+            // В режиме "Подсветка + скролл" ищем по всей странице без ограничений
+            if (config.mode === 'highlight-scroll') {
+                return allElements;
+            }
+            
             if (!lastFoundElement || !allElements.includes(lastFoundElement)) {
                 return allElements.slice(0, config.searchRadius * 2);
             }
@@ -706,9 +713,24 @@
         }
         
         function resetSettings() {
-            config = {...defaultConfig};
-            localStorage.removeItem('suflerSettings');
+            const savedSettings = localStorage.getItem('suflerSettings');
+            if (savedSettings) {
+                config = JSON.parse(savedSettings);
+            }
             hideSettings();
+        }
+        
+        function applyDefaultSettings() {
+            config = {...defaultConfig};
+            modeSelect.value = config.mode;
+            wordsRange.value = config.wordsToUse;
+            wordsValue.textContent = config.wordsToUse;
+            radiusRange.value = config.searchRadius;
+            radiusValue.textContent = config.searchRadius;
+            sensitivityRange.value = config.sensitivity;
+            sensitivityValue.textContent = config.sensitivity + '%';
+            minLengthRange.value = config.minWordLength;
+            minLengthValue.textContent = config.minWordLength;
         }
         
         // Обновление значений в реальном времени
@@ -733,6 +755,7 @@
             closeSettingsBtn.addEventListener('click', hideSettings);
             saveSettingsBtn.addEventListener('click', saveSettings);
             resetSettingsBtn.addEventListener('click', resetSettings);
+            defaultSettingsBtn.addEventListener('click', applyDefaultSettings);
         }
         
         // Горячие клавиши
