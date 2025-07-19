@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Автосуфлёр PRO (настраиваемый)</title>
+    <title>Умный суфлёр PRO</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -22,7 +22,7 @@
             --panel-bg-dark: rgba(40,40,40,0.95);
             --settings-bg: rgba(30,30,30,0.95);
         }
-
+        
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
@@ -31,18 +31,19 @@
             color: var(--text-light);
             transition: all 0.3s ease;
         }
-
+        
         body.dark-theme {
             background-color: var(--bg-dark);
             color: var(--text-dark);
         }
-
+        
         #app {
             display: flex;
             min-height: 100vh;
             position: relative;
         }
-
+        
+        /* Стили редактора */
         #editor-container {
             width: 40%;
             background: var(--editor-bg-light);
@@ -51,11 +52,11 @@
             flex-direction: column;
             transition: all 0.3s ease;
         }
-
+        
         .dark-theme #editor-container {
             background: var(--editor-bg-dark);
         }
-
+        
         .editor-header {
             padding: 12px 20px;
             background: var(--primary);
@@ -64,7 +65,7 @@
             justify-content: space-between;
             align-items: center;
         }
-
+        
         #editor {
             flex: 1;
             padding: 20px;
@@ -77,12 +78,13 @@
             color: var(--text-light);
             transition: all 0.3s ease;
         }
-
+        
         .dark-theme #editor {
             background: var(--editor-bg-dark);
             color: var(--text-dark);
         }
-
+        
+        /* Стили просмотра */
         #preview {
             flex: 1;
             padding: 40px;
@@ -92,12 +94,13 @@
             background: var(--preview-bg-light);
             transition: all 0.3s ease;
         }
-
+        
         .dark-theme #preview {
             background: var(--preview-bg-dark);
             color: var(--text-dark);
         }
-
+        
+        /* Панель управления */
         .control-panel {
             position: fixed;
             bottom: 20px;
@@ -115,12 +118,12 @@
             transition: all 0.3s ease;
             width: 250px;
         }
-
+        
         .control-panel.hidden {
             transform: translateX(calc(100% + 20px));
             opacity: 0;
         }
-
+        
         .panel-toggle {
             position: fixed;
             bottom: 20px;
@@ -138,15 +141,15 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             transition: all 0.3s ease;
         }
-
+        
         .panel-toggle.hidden {
             transform: translateX(0);
         }
-
+        
         .dark-theme .control-panel {
             background: var(--panel-bg-dark);
         }
-
+        
         .control-btn {
             color: white;
             border: none;
@@ -159,45 +162,46 @@
             gap: 8px;
             transition: all 0.2s;
         }
-
+        
         .control-btn:hover {
             transform: translateY(-2px);
             opacity: 0.9;
         }
-
+        
         #suflerToggle {
             background: var(--success);
         }
-
+        
         #suflerToggle.active {
             background: var(--danger);
         }
-
+        
         #toggleEditorBtn {
             background: var(--secondary);
         }
-
+        
         #toggleThemeBtn {
             background: #555;
         }
-
+        
         #settingsBtn {
             background: #9c27b0;
         }
-
+        
         #suflerStatus {
             margin-top: 5px;
             font-size: 14px;
             min-height: 20px;
         }
-
+        
+        /* Подсветка текста */
         .sufler-highlight {
             background: var(--highlight) !important;
             color: #000 !important;
             border-radius: 3px !important;
             padding: 0 2px !important;
         }
-
+        
         .sufler-active-block {
             background: rgba(173, 216, 230, 0.3) !important;
             transition: all 0.3s ease !important;
@@ -205,18 +209,20 @@
             padding-left: 10px;
             margin-left: -13px;
         }
-
+        
+        /* Класс для скрытия редактора */
         .editor-hidden {
             width: 0 !important;
             overflow: hidden;
             opacity: 0;
             transform: translateX(-100%);
         }
-
+        
         .preview-full-width {
             width: 100% !important;
         }
-
+        
+        /* Настройки */
         .settings-panel {
             position: fixed;
             top: 50%;
@@ -233,40 +239,40 @@
             backdrop-filter: blur(10px);
             display: none;
         }
-
+        
         .settings-panel h3 {
             margin-top: 0;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             padding-bottom: 10px;
         }
-
+        
         .settings-group {
             margin-bottom: 15px;
         }
-
+        
         .settings-group label {
             display: block;
             margin-bottom: 5px;
             font-size: 14px;
         }
-
+        
         .settings-group input[type="range"] {
             width: 100%;
         }
-
+        
         .settings-group .value-display {
             font-size: 12px;
             color: #aaa;
             text-align: right;
         }
-
+        
         .settings-actions {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
             margin-top: 20px;
         }
-
+        
         .close-settings {
             position: absolute;
             top: 10px;
@@ -277,22 +283,23 @@
             font-size: 20px;
             cursor: pointer;
         }
-
+        
+        /* Адаптивность */
         @media (max-width: 768px) {
             #app {
                 flex-direction: column;
             }
-
+            
             #editor-container, #preview {
                 width: 100%;
             }
-
+            
             .editor-hidden {
                 transform: translateX(0);
                 position: absolute;
                 height: 0;
             }
-
+            
             .settings-panel {
                 width: 90%;
             }
@@ -312,6 +319,7 @@
         </div>
         <div id="preview"></div>
     </div>
+
     <div class="panel-toggle">⚙️</div>
     <div class="control-panel hidden">
         <button id="suflerToggle" class="control-btn">
@@ -325,10 +333,11 @@
         </button>
         <div id="suflerStatus">Готов к работе</div>
     </div>
+
     <div class="settings-panel">
         <button class="close-settings">×</button>
         <h3>Настройки суфлера</h3>
-
+        
         <div class="settings-group">
             <label for="modeSelect">Режим работы:</label>
             <select id="modeSelect" class="control-btn" style="width:100%">
@@ -336,50 +345,57 @@
                 <option value="highlight-scroll">Подсветка + скролл</option>
             </select>
         </div>
-
+        
         <div class="settings-group">
             <label for="wordsRange">Количество слов для поиска: <span class="value-display" id="wordsValue">3</span></label>
             <input type="range" id="wordsRange" min="1" max="5" value="3" step="1">
         </div>
-
+        
         <div class="settings-group">
             <label for="radiusRange">Область поиска (строки): <span class="value-display" id="radiusValue">5</span></label>
-            <input type="range" id="radiusRange" min="1" max="10" value="5" step="1">
+            <input type="range" id="radiusRange" min="1" max="20" value="5" step="1">
         </div>
-
+        
         <div class="settings-group">
             <label for="sensitivityRange">Чувствительность: <span class="value-display" id="sensitivityValue">50%</span></label>
             <input type="range" id="sensitivityRange" min="10" max="90" value="50" step="10">
         </div>
-
+        
         <div class="settings-group">
             <label for="minLengthRange">Мин. длина слова: <span class="value-display" id="minLengthValue">2</span></label>
             <input type="range" id="minLengthRange" min="1" max="5" value="2" step="1">
         </div>
-
+        
+        <div class="settings-group">
+            <label for="autoScrollTime">Автоскролл (сек): <span class="value-display" id="autoScrollValue">10</span></label>
+            <input type="range" id="autoScrollTime" min="5" max="30" value="10" step="1">
+        </div>
+        
         <div class="settings-actions">
             <button id="saveSettings" class="control-btn">Сохранить</button>
             <button id="resetSettings" class="control-btn">Сбросить</button>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <script>
     (function() {
         'use strict';
-
+        
         // Конфигурация по умолчанию
         const defaultConfig = {
             mode: 'highlight-scroll',
             wordsToUse: 3,
             searchRadius: 5,
             sensitivity: 50,
-            minWordLength: 2
+            minWordLength: 2,
+            autoScrollTime: 10
         };
-
+        
         // Текущая конфигурация
         let config = {...defaultConfig};
-
+        
         // Элементы интерфейса
         const editor = document.getElementById('editor');
         const preview = document.getElementById('preview');
@@ -395,7 +411,7 @@
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
         const settingsPanel = document.querySelector('.settings-panel');
-
+        
         // Элементы настроек
         const modeSelect = document.getElementById('modeSelect');
         const wordsRange = document.getElementById('wordsRange');
@@ -406,64 +422,71 @@
         const sensitivityValue = document.getElementById('sensitivityValue');
         const minLengthRange = document.getElementById('minLengthRange');
         const minLengthValue = document.getElementById('minLengthValue');
-
+        const autoScrollTime = document.getElementById('autoScrollTime');
+        const autoScrollValue = document.getElementById('autoScrollValue');
+        
         // Состояние приложения
         let recognition;
         let isActive = false;
         let wordsBuffer = [];
         let lastFoundElement = null;
+        let lastFoundIndex = 0;
         let isDarkTheme = false;
         let isPanelHidden = true;
         let allElements = [];
         let autoScrollTimer;
-
+        let consecutiveMatches = 0;
+        let searchExpansionTimer;
+        let currentSearchRadius;
+        let lastProcessedTime = 0;
+        
         // Инициализация редактора
         function initEditor() {
             if (localStorage.getItem('suflerContent')) {
                 editor.value = localStorage.getItem('suflerContent');
                 updatePreview();
             }
-
+            
             if (localStorage.getItem('darkTheme') === 'true') {
                 toggleTheme();
             }
-
+            
             // Загрузка настроек
             loadSettings();
-
+            
             editor.addEventListener('input', () => {
                 updatePreview();
                 localStorage.setItem('suflerContent', editor.value);
             });
-
+            
             function adjustTextarea() {
                 editor.style.height = 'auto';
                 editor.style.height = editor.scrollHeight + 'px';
             }
             editor.addEventListener('input', adjustTextarea);
             adjustTextarea();
-
+            
             window.addEventListener('load', () => editor.focus());
         }
-
+        
         // Обновление preview
         function updatePreview() {
             preview.innerHTML = marked.parse(editor.value);
             allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
         }
-
+        
         // Управление редактором
         function initEditorControls() {
             toggleEditorBtn.addEventListener('click', () => {
                 editorContainer.classList.toggle('editor-hidden');
                 preview.classList.toggle('preview-full-width');
-
-                toggleEditorBtn.innerHTML = editorContainer.classList.contains('editor-hidden')
-                    ? '📝 Показать редактор'
+                
+                toggleEditorBtn.innerHTML = editorContainer.classList.contains('editor-hidden') 
+                    ? '📝 Показать редактор' 
                     : '📝 Скрыть редактор';
             });
         }
-
+        
         // Переключение темы
         function toggleTheme() {
             isDarkTheme = !isDarkTheme;
@@ -471,136 +494,224 @@
             localStorage.setItem('darkTheme', isDarkTheme);
             toggleThemeBtn.innerHTML = isDarkTheme ? '🌞 Светлая тема' : '🌓 Тёмная тема';
         }
-
+        
         // Переключение панели
         function togglePanel() {
             isPanelHidden = !isPanelHidden;
             controlPanel.classList.toggle('hidden');
             panelToggle.innerHTML = isPanelHidden ? '⚙️' : '❌';
         }
-
-        // Распознавание речи (мгновенное)
+        
+        // Распознавание речи
         function initSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 statusEl.textContent = 'Распознавание речи не поддерживается';
                 suflerToggle.disabled = true;
                 return;
             }
-
+            
             recognition = new webkitSpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'ru-RU';
-
+            
             recognition.onresult = (event) => {
                 const results = Array.from(event.results);
                 const last = results[results.length - 1];
-
-                // Обрабатываем даже промежуточные результаты
+                
                 if (last && !last.isFinal) {
                     const transcript = last[0].transcript.trim();
                     const newWords = transcript.toLowerCase()
                         .split(/\s+/)
                         .filter(w => w.length >= config.minWordLength);
-
+                    
                     if (newWords.length > 0) {
                         wordsBuffer = [...wordsBuffer, ...newWords].slice(-10);
                         processSpeech();
                     }
                 }
             };
-
+            
             recognition.onerror = (event) => {
                 if (isActive) setTimeout(() => recognition.start(), 300);
             };
-
+            
             recognition.onend = () => {
                 if (isActive) recognition.start();
             };
         }
-
-        // Получить ближайшие элементы для поиска
-        function getNearbyElements() {
+        
+        // Получить элементы для поиска с динамическим расширением
+        function getSearchElements() {
+            if (!allElements.length) return [];
+            
+            // Если нет последнего найденного элемента, начинаем с начала
             if (!lastFoundElement || !allElements.includes(lastFoundElement)) {
-                return allElements.slice(0, config.searchRadius * 2);
+                lastFoundIndex = 0;
+                return allElements.slice(0, currentSearchRadius * 2);
             }
-
+            
             const currentIndex = allElements.indexOf(lastFoundElement);
-            const start = Math.max(0, currentIndex - config.searchRadius);
-            const end = Math.min(allElements.length, currentIndex + config.searchRadius + 1);
-
+            const start = Math.max(0, currentIndex - currentSearchRadius);
+            const end = Math.min(allElements.length, currentIndex + currentSearchRadius + 1);
+            
             return allElements.slice(start, end);
         }
-
-        // Мгновенная обработка речи
+        
+        // Поиск лучшего совпадения с fuzzy-логикой
+        function findBestMatch(searchWords, elements) {
+            if (!elements.length || !searchWords.length) return null;
+            
+            const fuseOptions = {
+                includeScore: true,
+                threshold: 0.6,
+                ignoreLocation: true,
+                minMatchCharLength: config.minWordLength,
+                keys: ['textContent']
+            };
+            
+            const fuse = new Fuse(elements, fuseOptions);
+            const results = fuse.search(searchWords.join(' '));
+            
+            if (results.length > 0) {
+                const bestMatch = results[0];
+                const matchScore = 1 - bestMatch.score; // Преобразуем в процент совпадения
+                
+                if (matchScore >= (config.sensitivity / 100)) {
+                    return {
+                        element: bestMatch.item,
+                        score: matchScore
+                    };
+                }
+            }
+            
+            return null;
+        }
+        
+        // Обработка речи с улучшенной логикой
         function processSpeech() {
             if (wordsBuffer.length === 0) return;
-
+            
+            const now = Date.now();
+            if (now - lastProcessedTime < 500) return; // Ограничение частоты обработки
+            lastProcessedTime = now;
+            
+            // Сбрасываем таймер автоскролла при каждом новом слове
+            resetAutoScrollTimer();
+            
             const searchWords = wordsBuffer.slice(-config.wordsToUse);
-            const elementsToSearch = getNearbyElements();
-            const options = {
-                keys: ['textContent'],
-                threshold: 0.4,
-                includeScore: true
-            };
-
-            const fuse = new Fuse(elementsToSearch.map(el => ({ textContent: el.textContent })), options);
-            const result = fuse.search(searchWords.join(' '));
-
-            if (result.length > 0) {
-                const bestElement = elementsToSearch.find(el => el.textContent === result[0].item.textContent);
-                highlightMatches(bestElement, searchWords);
-                centerElement(bestElement);
-                statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
-                lastFoundElement = bestElement;
-                resetAutoScrollTimer();
+            const elementsToSearch = getSearchElements();
+            const bestMatch = findBestMatch(searchWords, elementsToSearch);
+            
+            if (bestMatch) {
+                // Если нашли хорошее совпадение
+                highlightMatches(bestMatch.element, searchWords);
+                
+                if (config.mode === 'highlight-scroll') {
+                    centerElement(bestMatch.element);
+                }
+                
+                statusEl.textContent = `Найдено: "${searchWords.join(' ')}" (${Math.round(bestMatch.score * 100)}%)`;
+                lastFoundElement = bestMatch.element;
+                lastFoundIndex = allElements.indexOf(bestMatch.element);
+                consecutiveMatches++;
+                currentSearchRadius = config.searchRadius; // Сбрасываем радиус поиска
+                
+                // Останавливаем расширение области поиска
+                if (searchExpansionTimer) {
+                    clearTimeout(searchExpansionTimer);
+                    searchExpansionTimer = null;
+                }
+            } else {
+                // Если не нашли совпадение
+                consecutiveMatches = 0;
+                
+                // Расширяем область поиска, если еще не делали этого
+                if (!searchExpansionTimer && currentSearchRadius < allElements.length / 2) {
+                    statusEl.textContent = `Поиск в расширенной области...`;
+                    
+                    searchExpansionTimer = setTimeout(() => {
+                        currentSearchRadius = Math.min(
+                            currentSearchRadius * 2, 
+                            Math.max(20, allElements.length / 2)
+                        );
+                        searchExpansionTimer = null;
+                        processSpeech(); // Повторяем поиск с новым радиусом
+                    }, 1000);
+                }
             }
         }
-
+        
         // Подсветка совпадений
         function highlightMatches(element, words) {
             // Убираем предыдущую подсветку
             document.querySelectorAll('.sufler-highlight').forEach(el => {
                 el.classList.remove('sufler-highlight');
             });
-
+            
             // Убираем подсветку активного блока
             document.querySelectorAll('.sufler-active-block').forEach(el => {
                 el.classList.remove('sufler-active-block');
             });
-
+            
             // Добавляем новую подсветку
             element.classList.add('sufler-active-block');
             let newHTML = element.innerHTML;
-
+            
             words.forEach(word => {
                 if (word.length >= config.minWordLength) {
                     const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
                     newHTML = newHTML.replace(regex, '<span class="sufler-highlight">$1</span>');
                 }
             });
-
+            
             element.innerHTML = newHTML;
         }
-
+        
         // Экранирование спецсимволов
         function escapeRegExp(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
-
-        // Центрирование элемента
+        
+        // Центрирование элемента с плавным скроллом
         function centerElement(element) {
             if (!element) return;
-
+            
             const elementRect = element.getBoundingClientRect();
-            const targetScrollPos = elementRect.top + window.pageYOffset - (window.innerHeight * 0.3);
-
+            const targetScrollPos = elementRect.top + window.pageYOffset - 
+                                  (window.innerHeight * 0.3);
+            
             window.scrollTo({
                 top: targetScrollPos,
                 behavior: 'smooth'
             });
         }
-
+        
+        // Таймер автоскролла
+        function resetAutoScrollTimer() {
+            if (autoScrollTimer) {
+                clearTimeout(autoScrollTimer);
+            }
+            
+            autoScrollTimer = setTimeout(() => {
+                if (!isActive) return;
+                
+                // Переходим к следующему элементу
+                const nextIndex = Math.min(lastFoundIndex + 1, allElements.length - 1);
+                const nextElement = allElements[nextIndex];
+                
+                if (nextElement) {
+                    highlightMatches(nextElement, []);
+                    centerElement(nextElement);
+                    lastFoundElement = nextElement;
+                    lastFoundIndex = nextIndex;
+                    statusEl.textContent = 'Автоматический переход к следующему блоку';
+                }
+                
+                resetAutoScrollTimer();
+            }, config.autoScrollTime * 1000);
+        }
+        
         // Управление суфлером
         function toggleRecognition() {
             if (isActive) {
@@ -609,10 +720,10 @@
                 startRecognition();
             }
         }
-
+        
         function startRecognition() {
             if (!recognition) initSpeechRecognition();
-
+            
             try {
                 recognition.start();
                 isActive = true;
@@ -621,15 +732,20 @@
                 statusEl.textContent = 'Слушаю...';
                 wordsBuffer = [];
                 lastFoundElement = null;
-                startAutoScrollTimer();
-
+                lastFoundIndex = 0;
+                currentSearchRadius = config.searchRadius;
+                consecutiveMatches = 0;
+                
+                // Запускаем таймер автоскролла
+                resetAutoScrollTimer();
+                
                 window.focus();
             } catch (error) {
                 statusEl.textContent = 'Ошибка доступа к микрофону';
                 setTimeout(startRecognition, 500);
             }
         }
-
+        
         function stopRecognition() {
             isActive = false;
             if (recognition) {
@@ -639,9 +755,19 @@
             suflerToggle.classList.remove('active');
             suflerToggle.innerHTML = '🎤 Включить';
             statusEl.textContent = 'Готов к работе';
-            clearTimeout(autoScrollTimer);
+            
+            // Останавливаем все таймеры
+            if (autoScrollTimer) {
+                clearTimeout(autoScrollTimer);
+                autoScrollTimer = null;
+            }
+            
+            if (searchExpansionTimer) {
+                clearTimeout(searchExpansionTimer);
+                searchExpansionTimer = null;
+            }
         }
-
+        
         // Настройки
         function showSettings() {
             // Заполняем текущие значения
@@ -654,193 +780,210 @@
             sensitivityValue.textContent = config.sensitivity + '%';
             minLengthRange.value = config.minWordLength;
             minLengthValue.textContent = config.minWordLength;
-
+            autoScrollTime.value = config.autoScrollTime;
+            autoScrollValue.textContent = config.autoScrollTime;
+            
             settingsPanel.style.display = 'block';
         }
-
+        
         function hideSettings() {
             settingsPanel.style.display = 'none';
         }
-
+        
         function loadSettings() {
             const savedSettings = localStorage.getItem('suflerSettings');
             if (savedSettings) {
                 config = {...defaultConfig, ...JSON.parse(savedSettings)};
             }
         }
-
+        
         function saveSettings() {
             config = {
                 mode: modeSelect.value,
                 wordsToUse: parseInt(wordsRange.value),
                 searchRadius: parseInt(radiusRange.value),
                 sensitivity: parseInt(sensitivityRange.value),
-                minWordLength: parseInt(minLengthRange.value)
+                minWordLength: parseInt(minLengthRange.value),
+                autoScrollTime: parseInt(autoScrollTime.value)
             };
-
+            
             localStorage.setItem('suflerSettings', JSON.stringify(config));
             hideSettings();
+            
+            // Обновляем текущий радиус поиска
+            if (isActive) {
+                currentSearchRadius = config.searchRadius;
+            }
         }
-
+        
         function resetSettings() {
             config = {...defaultConfig};
             localStorage.removeItem('suflerSettings');
             hideSettings();
         }
-
+        
         // Обновление значений в реальном времени
         function initSettingsEvents() {
             wordsRange.addEventListener('input', () => {
                 wordsValue.textContent = wordsRange.value;
             });
-
+            
             radiusRange.addEventListener('input', () => {
                 radiusValue.textContent = radiusRange.value;
             });
-
+            
             sensitivityRange.addEventListener('input', () => {
                 sensitivityValue.textContent = sensitivityRange.value + '%';
             });
-
+            
             minLengthRange.addEventListener('input', () => {
                 minLengthValue.textContent = minLengthRange.value;
             });
-
+            
+            autoScrollTime.addEventListener('input', () => {
+                autoScrollValue.textContent = autoScrollTime.value;
+            });
+            
             settingsBtn.addEventListener('click', showSettings);
             closeSettingsBtn.addEventListener('click', hideSettings);
             saveSettingsBtn.addEventListener('click', saveSettings);
             resetSettingsBtn.addEventListener('click', resetSettings);
         }
-
+        
         // Горячие клавиши
         function initHotkeys() {
             document.addEventListener('keydown', (e) => {
-                // Pause/Break - управление суфлером
-                if (e.code === 'Pause') {
+                // Space - управление суфлером
+                if (e.code === 'Space') {
                     e.preventDefault();
                     toggleRecognition();
                 }
-
+                
+                // Стрелка вниз - следующий абзац
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    moveToNextParagraph();
+                }
+                
+                // Стрелка вверх - предыдущий абзац
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    moveToPrevParagraph();
+                }
+                
+                // R - сброс к началу
+                if (e.key === 'r' || e.key === 'R') {
+                    e.preventDefault();
+                    resetToStart();
+                }
+                
                 // Ctrl+E - управление редактором
                 if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                     e.preventDefault();
                     toggleEditorBtn.click();
                 }
-
+                
                 // Ctrl+T - переключение темы
                 if ((e.ctrlKey || e.metaKey) && e.key === 't') {
                     e.preventDefault();
                     toggleTheme();
                 }
-
+                
+                // Ctrl+P - переключение панели
+                if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                    e.preventDefault();
+                    togglePanel();
+                }
+                
                 // Ctrl+, - открыть настройки
                 if ((e.ctrlKey || e.metaKey) && e.key === ',') {
                     e.preventDefault();
                     showSettings();
                 }
-
-                // ArrowUp - вернуться на абзац назад
-                if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    handleBackwardNavigation();
-                }
-
-                // ArrowDown - перейти к следующему абзацу
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    const nextElement = allElements.find((el, index) => index > (lastFoundElement ? allElements.indexOf(lastFoundElement) : -1));
-                    if (nextElement) {
-                        centerElement(nextElement);
-                    }
-                }
-
-                // Space - пауза / продолжить
-                if (e.key === ' ') {
-                    e.preventDefault();
-                    toggleRecognition();
-                }
-
-                // R - сброс к началу
-                if (e.key === 'r') {
-                    e.preventDefault();
-                    resetToStart();
-                }
             });
         }
-
-        function handleBackwardNavigation() {
-            if (wordsBuffer.length > 0) {
-                const searchWords = wordsBuffer.slice(-config.wordsToUse);
-                const currentIndex = allElements.indexOf(lastFoundElement);
-                const previousElements = allElements.slice(0, currentIndex).reverse();
-
-                const options = {
-                    keys: ['textContent'],
-                    threshold: 0.4,
-                    includeScore: true
-                };
-
-                const fuse = new Fuse(previousElements.map(el => ({ textContent: el.textContent })), options);
-                const result = fuse.search(searchWords.join(' '));
-
-                if (result.length > 0) {
-                    const bestElement = previousElements.find(el => el.textContent === result[0].item.textContent);
-                    highlightMatches(bestElement, searchWords);
-                    centerElement(bestElement);
-                    lastFoundElement = bestElement;
+        
+        // Перемещение к следующему абзацу
+        function moveToNextParagraph() {
+            if (!allElements.length) return;
+            
+            const currentIndex = lastFoundElement ? allElements.indexOf(lastFoundElement) : -1;
+            const nextIndex = Math.min(currentIndex + 1, allElements.length - 1);
+            const nextElement = allElements[nextIndex];
+            
+            if (nextElement) {
+                highlightMatches(nextElement, []);
+                centerElement(nextElement);
+                lastFoundElement = nextElement;
+                lastFoundIndex = nextIndex;
+                statusEl.textContent = 'Переход к следующему блоку';
+                
+                // Сбрасываем таймер автоскролла
+                if (isActive) {
+                    resetAutoScrollTimer();
                 }
             }
         }
-
-        function resetToStart() {
-            lastFoundElement = null;
-            wordsBuffer = [];
-            document.querySelectorAll('.sufler-highlight').forEach(el => {
-                el.classList.remove('sufler-highlight');
-            });
-            document.querySelectorAll('.sufler-active-block').forEach(el => {
-                el.classList.remove('sufler-active-block');
-            });
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
-
-        function startAutoScrollTimer() {
-            autoScrollTimer = setTimeout(() => {
-                if (isActive && !lastFoundElement) {
-                    const nextElement = allElements.find((el, index) => index > (lastFoundElement ? allElements.indexOf(lastFoundElement) : -1));
-                    if (nextElement) {
-                        centerElement(nextElement);
-                    }
+        
+        // Перемещение к предыдущему абзацу
+        function moveToPrevParagraph() {
+            if (!allElements.length) return;
+            
+            const currentIndex = lastFoundElement ? allElements.indexOf(lastFoundElement) : 0;
+            const prevIndex = Math.max(currentIndex - 1, 0);
+            const prevElement = allElements[prevIndex];
+            
+            if (prevElement) {
+                highlightMatches(prevElement, []);
+                centerElement(prevElement);
+                lastFoundElement = prevElement;
+                lastFoundIndex = prevIndex;
+                statusEl.textContent = 'Переход к предыдущему блоку';
+                
+                // Сбрасываем таймер автоскролла
+                if (isActive) {
+                    resetAutoScrollTimer();
                 }
-            }, 10000); // 10 секунд
+            }
         }
-
-        function resetAutoScrollTimer() {
-            clearTimeout(autoScrollTimer);
-            startAutoScrollTimer();
+        
+        // Сброс к началу
+        function resetToStart() {
+            if (!allElements.length) return;
+            
+            const firstElement = allElements[0];
+            if (firstElement) {
+                highlightMatches(firstElement, []);
+                centerElement(firstElement);
+                lastFoundElement = firstElement;
+                lastFoundIndex = 0;
+                statusEl.textContent = 'Сброс к началу текста';
+                
+                // Сбрасываем таймер автоскролла
+                if (isActive) {
+                    resetAutoScrollTimer();
+                }
+            }
         }
-
+        
         // Инициализация приложения
         function initApp() {
             initEditor();
             initEditorControls();
             initSettingsEvents();
             initHotkeys();
-
+            
             suflerToggle.addEventListener('click', toggleRecognition);
             toggleThemeBtn.addEventListener('click', toggleTheme);
             panelToggle.addEventListener('click', togglePanel);
-
+            
             // Автозапуск суфлера
             setTimeout(() => {
                 if (!isActive) {
                     startRecognition();
                 }
             }, 500);
-
+            
             const observer = new MutationObserver(() => {
                 if (preview.innerHTML.trim()) {
                     allElements = Array.from(preview.querySelectorAll('p, h1, h2, h3, li, div'));
@@ -849,7 +992,7 @@
             });
             observer.observe(preview, { childList: true, subtree: true });
         }
-
+        
         // Запуск приложения
         initApp();
     })();
