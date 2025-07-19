@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Автосуфлёр PRO (настраиваемый)</title>
     <style>
+        /* Предыдущие стили остаются без изменений */
         :root {
             --primary: #2c3e50;
             --secondary: #3498db;
@@ -334,6 +335,7 @@
             <select id="modeSelect" class="control-btn" style="width:100%">
                 <option value="highlight">Только подсветка</option>
                 <option value="highlight-scroll">Подсветка + скролл</option>
+                <option value="karaoke">Режим "Караоке"</option>
             </select>
         </div>
 
@@ -374,7 +376,8 @@
             wordsToUse: 3,
             searchRadius: 5,
             sensitivity: 50,
-            minWordLength: 2
+            minWordLength: 2,
+            karaokeMode: false
         };
 
         // Текущая конфигурация
@@ -416,6 +419,7 @@
         let isPanelHidden = true;
         let allElements = [];
         let autoScrollTimer;
+        let currentHighlightIndex = 0;
 
         // Инициализация редактора
         function initEditor() {
@@ -538,19 +542,40 @@
 
             const searchWords = wordsBuffer.slice(-config.wordsToUse);
             const elementsToSearch = getNearbyElements();
-            const options = {
-                keys: ['textContent'],
-                threshold: 0.4,
-                includeScore: true
-            };
+            let bestElement = null;
+            let maxMatches = 0;
 
-            const fuse = new Fuse(elementsToSearch.map(el => ({ textContent: el.textContent })), options);
-            const result = fuse.search(searchWords.join(' '));
+            // Ищем элемент с максимальным количеством совпадений
+            elementsToSearch.forEach(el => {
+                const text = el.textContent.toLowerCase();
+                let matches = 0;
 
-            if (result.length > 0) {
-                const bestElement = elementsToSearch.find(el => el.textContent === result[0].item.textContent);
-                highlightMatches(bestElement, searchWords);
-                centerElement(bestElement);
+                searchWords.forEach(word => {
+                    if (text.includes(word)) matches++;
+                });
+
+                // Учитываем чувствительность
+                const matchThreshold = Math.ceil((config.sensitivity / 100) * searchWords.length);
+
+                if (matches >= matchThreshold && matches > maxMatches) {
+                    maxMatches = matches;
+                    bestElement = el;
+                }
+            });
+
+            // Если нашли подходящий элемент
+            if (bestElement) {
+                if (config.mode === 'karaoke') {
+                    highlightKaraoke(bestElement, searchWords);
+                } else {
+                    highlightMatches(bestElement, searchWords);
+                }
+
+                // Скроллим только если выбран соответствующий режим
+                if (config.mode === 'highlight-scroll') {
+                    centerElement(bestElement);
+                }
+
                 statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
                 lastFoundElement = bestElement;
                 resetAutoScrollTimer();
@@ -581,6 +606,44 @@
             });
 
             element.innerHTML = newHTML;
+        }
+
+        // Подсветка в режиме "Караоке"
+        function highlightKaraoke(element, words) {
+            // Убираем предыдущую подсветку
+            document.querySelectorAll('.sufler-highlight').forEach(el => {
+                el.classList.remove('sufler-highlight');
+            });
+
+            // Убираем подсветку активного блока
+            document.querySelectorAll('.sufler-active-block').forEach(el => {
+                el.classList.remove('sufler-active-block');
+            });
+
+            // Добавляем новую подсветку
+            element.classList.add('sufler-active-block');
+            let newHTML = element.innerHTML;
+            let text = element.textContent;
+            let textToHighlight = text.split(' ');
+
+            textToHighlight.forEach((word, index) => {
+                if (words.includes(word.toLowerCase())) {
+                    const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
+                    newHTML = newHTML.replace(regex, '<span class="sufler-highlight" id="highlight-' + index + '">$1</span>');
+                }
+            });
+
+            element.innerHTML = newHTML;
+
+            // Подсвечиваем слова по очереди
+            words.forEach((word, index) => {
+                const wordElement = document.getElementById('highlight-' + index);
+                if (wordElement) {
+                    setTimeout(() => {
+                        wordElement.style.backgroundColor = 'transparent';
+                    }, index * 1000);
+                }
+            });
         }
 
         // Экранирование спецсимволов
@@ -675,7 +738,8 @@
                 wordsToUse: parseInt(wordsRange.value),
                 searchRadius: parseInt(radiusRange.value),
                 sensitivity: parseInt(sensitivityRange.value),
-                minWordLength: parseInt(minLengthRange.value)
+                minWordLength: parseInt(minLengthRange.value),
+                karaokeMode: modeSelect.value === 'karaoke'
             };
 
             localStorage.setItem('suflerSettings', JSON.stringify(config));
