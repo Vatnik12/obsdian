@@ -91,6 +91,7 @@
             overflow-y: auto;
             background: var(--preview-bg-light);
             transition: all 0.3s ease;
+            height: 50vh;
         }
 
         .dark-theme #preview {
@@ -280,23 +281,24 @@
 
         .karaoke-panel {
             position: fixed;
-            bottom: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50vh;
+            background: rgba(0, 0, 0, 1);
             color: white;
             padding: 20px;
-            border-radius: 10px;
             z-index: 1000;
-            width: 80%;
-            max-width: 800px;
-            text-align: center;
-            display: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
         .karaoke-text {
             font-size: 24px;
             margin: 0;
+            text-align: center;
         }
 
         .karaoke-highlight {
@@ -304,26 +306,6 @@
             color: black;
             padding: 2px 4px;
             border-radius: 3px;
-        }
-
-        .cloud-panel {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 1000;
-            width: 80%;
-            max-width: 800px;
-            display: none;
-        }
-
-        .cloud-text {
-            font-size: 24px;
-            margin: 0;
         }
 
         .cloud-controls {
@@ -398,7 +380,6 @@
             <select id="modeSelect" class="control-btn" style="width:100%">
                 <option value="highlight">Только подсветка</option>
                 <option value="highlight-scroll">Подсветка + скролл</option>
-                <option value="karaoke">Режим "Караоке"</option>
                 <option value="cloud">Режим "Облако фантазий"</option>
             </select>
         </div>
@@ -431,15 +412,6 @@
 
     <div class="karaoke-panel">
         <p class="karaoke-text" id="karaokeText"></p>
-    </div>
-
-    <div class="cloud-panel">
-        <p class="cloud-text" id="cloudCurrentText"></p>
-        <p class="cloud-text" id="cloudNextText"></p>
-        <div class="cloud-controls">
-            <button id="cloudPrevBtn">Назад</button>
-            <button id="cloudNextBtn">Вперёд</button>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
@@ -477,11 +449,6 @@
         const settingsPanel = document.querySelector('.settings-panel');
         const karaokePanel = document.querySelector('.karaoke-panel');
         const karaokeText = document.getElementById('karaokeText');
-        const cloudPanel = document.querySelector('.cloud-panel');
-        const cloudCurrentText = document.getElementById('cloudCurrentText');
-        const cloudNextText = document.getElementById('cloudNextText');
-        const cloudPrevBtn = document.getElementById('cloudPrevBtn');
-        const cloudNextBtn = document.getElementById('cloudNextBtn');
 
         // Элементы настроек
         const modeSelect = document.getElementById('modeSelect');
@@ -504,8 +471,6 @@
         let allElements = [];
         let autoScrollTimer;
         let currentHighlightIndex = 0;
-        let currentKaraokeIndex = 0;
-        let currentCloudIndex = 0;
 
         // Инициализация редактора
         function initEditor() {
@@ -648,16 +613,14 @@
             });
 
             if (bestElement) {
-                if (config.mode === 'karaoke') {
-                    highlightKaraoke(bestElement, searchWords);
-                } else if (config.mode === 'cloud') {
-                    updateCloudPanel(bestElement);
-                } else {
-                    highlightMatches(bestElement, searchWords);
-                }
+                highlightMatches(bestElement, searchWords);
 
                 if (config.mode === 'highlight-scroll') {
                     centerElement(bestElement);
+                }
+
+                if (config.mode === 'cloud') {
+                    highlightKaraoke(bestElement, searchWords);
                 }
 
                 statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
@@ -693,23 +656,12 @@
         function highlightKaraoke(element, words) {
             const text = element.textContent;
             karaokeText.innerHTML = text;
-            karaokePanel.style.display = 'block';
 
             words.forEach(word => {
                 const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
                 const highlightedText = text.replace(regex, '<span class="karaoke-highlight">$1</span>');
                 karaokeText.innerHTML = highlightedText;
             });
-        }
-
-        // Обновление панели "Облако фантазий"
-        function updateCloudPanel(element) {
-            const currentIndex = allElements.indexOf(element);
-            const nextIndex = currentIndex + 1;
-
-            cloudCurrentText.textContent = element.textContent;
-            cloudNextText.textContent = nextIndex < allElements.length ? allElements[nextIndex].textContent : '';
-            cloudPanel.style.display = 'block';
         }
 
         // Экранирование спецсимволов
@@ -751,6 +703,7 @@
                 wordsBuffer = [];
                 lastFoundElement = null;
                 startAutoScrollTimer();
+
                 window.focus();
             } catch (error) {
                 statusEl.textContent = 'Ошибка доступа к микрофону';
@@ -952,18 +905,6 @@
             suflerToggle.addEventListener('click', toggleRecognition);
             toggleThemeBtn.addEventListener('click', toggleTheme);
             panelToggle.addEventListener('click', togglePanel);
-            cloudPrevBtn.addEventListener('click', () => {
-                if (currentCloudIndex > 0) {
-                    currentCloudIndex--;
-                    updateCloudPanel(allElements[currentCloudIndex]);
-                }
-            });
-            cloudNextBtn.addEventListener('click', () => {
-                if (currentCloudIndex < allElements.length - 1) {
-                    currentCloudIndex++;
-                    updateCloudPanel(allElements[currentCloudIndex]);
-                }
-            });
 
             setTimeout(() => {
                 if (!isActive) {
