@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Автосуфлёр PRO (настраиваемый)</title>
     <style>
-        /* Предыдущие стили остаются без изменений */
         :root {
             --primary: #2c3e50;
             --secondary: #3498db;
@@ -279,6 +278,70 @@
             cursor: pointer;
         }
 
+        .karaoke-panel {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            width: 80%;
+            max-width: 800px;
+            text-align: center;
+            display: none;
+        }
+
+        .karaoke-text {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .karaoke-highlight {
+            background-color: var(--highlight);
+            color: black;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .cloud-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            width: 80%;
+            max-width: 800px;
+            display: none;
+        }
+
+        .cloud-text {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .cloud-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .cloud-controls button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
         @media (max-width: 768px) {
             #app {
                 flex-direction: column;
@@ -336,6 +399,7 @@
                 <option value="highlight">Только подсветка</option>
                 <option value="highlight-scroll">Подсветка + скролл</option>
                 <option value="karaoke">Режим "Караоке"</option>
+                <option value="cloud">Режим "Облако фантазий"</option>
             </select>
         </div>
 
@@ -364,6 +428,20 @@
             <button id="resetSettings" class="control-btn">Сбросить</button>
         </div>
     </div>
+
+    <div class="karaoke-panel">
+        <p class="karaoke-text" id="karaokeText"></p>
+    </div>
+
+    <div class="cloud-panel">
+        <p class="cloud-text" id="cloudCurrentText"></p>
+        <p class="cloud-text" id="cloudNextText"></p>
+        <div class="cloud-controls">
+            <button id="cloudPrevBtn">Назад</button>
+            <button id="cloudNextBtn">Вперёд</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6"></script>
     <script>
@@ -376,8 +454,7 @@
             wordsToUse: 3,
             searchRadius: 5,
             sensitivity: 50,
-            minWordLength: 2,
-            karaokeMode: false
+            minWordLength: 2
         };
 
         // Текущая конфигурация
@@ -398,6 +475,13 @@
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
         const settingsPanel = document.querySelector('.settings-panel');
+        const karaokePanel = document.querySelector('.karaoke-panel');
+        const karaokeText = document.getElementById('karaokeText');
+        const cloudPanel = document.querySelector('.cloud-panel');
+        const cloudCurrentText = document.getElementById('cloudCurrentText');
+        const cloudNextText = document.getElementById('cloudNextText');
+        const cloudPrevBtn = document.getElementById('cloudPrevBtn');
+        const cloudNextBtn = document.getElementById('cloudNextBtn');
 
         // Элементы настроек
         const modeSelect = document.getElementById('modeSelect');
@@ -420,6 +504,8 @@
         let allElements = [];
         let autoScrollTimer;
         let currentHighlightIndex = 0;
+        let currentKaraokeIndex = 0;
+        let currentCloudIndex = 0;
 
         // Инициализация редактора
         function initEditor() {
@@ -567,6 +653,8 @@
             if (bestElement) {
                 if (config.mode === 'karaoke') {
                     highlightKaraoke(bestElement, searchWords);
+                } else if (config.mode === 'cloud') {
+                    updateCloudPanel(bestElement);
                 } else {
                     highlightMatches(bestElement, searchWords);
                 }
@@ -610,40 +698,25 @@
 
         // Подсветка в режиме "Караоке"
         function highlightKaraoke(element, words) {
-            // Убираем предыдущую подсветку
-            document.querySelectorAll('.sufler-highlight').forEach(el => {
-                el.classList.remove('sufler-highlight');
+            const text = element.textContent;
+            karaokeText.innerHTML = text;
+            karaokePanel.style.display = 'block';
+
+            words.forEach(word => {
+                const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
+                const highlightedText = text.replace(regex, '<span class="karaoke-highlight">$1</span>');
+                karaokeText.innerHTML = highlightedText;
             });
+        }
 
-            // Убираем подсветку активного блока
-            document.querySelectorAll('.sufler-active-block').forEach(el => {
-                el.classList.remove('sufler-active-block');
-            });
+        // Обновление панели "Облако фантазий"
+        function updateCloudPanel(element) {
+            const currentIndex = allElements.indexOf(element);
+            const nextIndex = currentIndex + 1;
 
-            // Добавляем новую подсветку
-            element.classList.add('sufler-active-block');
-            let newHTML = element.innerHTML;
-            let text = element.textContent;
-            let textToHighlight = text.split(' ');
-
-            textToHighlight.forEach((word, index) => {
-                if (words.includes(word.toLowerCase())) {
-                    const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
-                    newHTML = newHTML.replace(regex, '<span class="sufler-highlight" id="highlight-' + index + '">$1</span>');
-                }
-            });
-
-            element.innerHTML = newHTML;
-
-            // Подсвечиваем слова по очереди
-            words.forEach((word, index) => {
-                const wordElement = document.getElementById('highlight-' + index);
-                if (wordElement) {
-                    setTimeout(() => {
-                        wordElement.style.backgroundColor = 'transparent';
-                    }, index * 1000);
-                }
-            });
+            cloudCurrentText.textContent = element.textContent;
+            cloudNextText.textContent = nextIndex < allElements.length ? allElements[nextIndex].textContent : '';
+            cloudPanel.style.display = 'block';
         }
 
         // Экранирование спецсимволов
@@ -738,8 +811,7 @@
                 wordsToUse: parseInt(wordsRange.value),
                 searchRadius: parseInt(radiusRange.value),
                 sensitivity: parseInt(sensitivityRange.value),
-                minWordLength: parseInt(minLengthRange.value),
-                karaokeMode: modeSelect.value === 'karaoke'
+                minWordLength: parseInt(minLengthRange.value)
             };
 
             localStorage.setItem('suflerSettings', JSON.stringify(config));
@@ -897,6 +969,18 @@
             suflerToggle.addEventListener('click', toggleRecognition);
             toggleThemeBtn.addEventListener('click', toggleTheme);
             panelToggle.addEventListener('click', togglePanel);
+            cloudPrevBtn.addEventListener('click', () => {
+                if (currentCloudIndex > 0) {
+                    currentCloudIndex--;
+                    updateCloudPanel(allElements[currentCloudIndex]);
+                }
+            });
+            cloudNextBtn.addEventListener('click', () => {
+                if (currentCloudIndex < allElements.length - 1) {
+                    currentCloudIndex++;
+                    updateCloudPanel(allElements[currentCloudIndex]);
+                }
+            });
 
             // Автозапуск суфлера
             setTimeout(() => {
