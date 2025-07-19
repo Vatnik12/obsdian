@@ -566,10 +566,11 @@
         function togglePanel() {
             isPanelHidden = !isPanelHidden;
             controlPanel.classList.toggle('hidden');
+            panelToggle.classList.toggle('hidden');
             panelToggle.innerHTML = isPanelHidden ? '⚙️' : '❌';
         }
 
-        // Распознавание речи (мгновенное)
+        // Распознавание речи
         function initSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 statusEl.textContent = 'Распознавание речи не поддерживается';
@@ -586,7 +587,6 @@
                 const results = Array.from(event.results);
                 const last = results[results.length - 1];
 
-                // Обрабатываем даже промежуточные результаты
                 if (last && !last.isFinal) {
                     const transcript = last[0].transcript.trim();
                     const newWords = transcript.toLowerCase()
@@ -622,7 +622,7 @@
             return allElements.slice(start, end);
         }
 
-        // Мгновенная обработка речи
+        // Обработка речи
         function processSpeech() {
             if (wordsBuffer.length === 0) return;
 
@@ -631,7 +631,6 @@
             let bestElement = null;
             let maxMatches = 0;
 
-            // Ищем элемент с максимальным количеством совпадений
             elementsToSearch.forEach(el => {
                 const text = el.textContent.toLowerCase();
                 let matches = 0;
@@ -640,7 +639,6 @@
                     if (text.includes(word)) matches++;
                 });
 
-                // Учитываем чувствительность
                 const matchThreshold = Math.ceil((config.sensitivity / 100) * searchWords.length);
 
                 if (matches >= matchThreshold && matches > maxMatches) {
@@ -649,7 +647,6 @@
                 }
             });
 
-            // Если нашли подходящий элемент
             if (bestElement) {
                 if (config.mode === 'karaoke') {
                     highlightKaraoke(bestElement, searchWords);
@@ -659,7 +656,6 @@
                     highlightMatches(bestElement, searchWords);
                 }
 
-                // Скроллим только если выбран соответствующий режим
                 if (config.mode === 'highlight-scroll') {
                     centerElement(bestElement);
                 }
@@ -672,17 +668,14 @@
 
         // Подсветка совпадений
         function highlightMatches(element, words) {
-            // Убираем предыдущую подсветку
             document.querySelectorAll('.sufler-highlight').forEach(el => {
                 el.classList.remove('sufler-highlight');
             });
 
-            // Убираем подсветку активного блока
             document.querySelectorAll('.sufler-active-block').forEach(el => {
                 el.classList.remove('sufler-active-block');
             });
 
-            // Добавляем новую подсветку
             element.classList.add('sufler-active-block');
             let newHTML = element.innerHTML;
 
@@ -758,7 +751,6 @@
                 wordsBuffer = [];
                 lastFoundElement = null;
                 startAutoScrollTimer();
-
                 window.focus();
             } catch (error) {
                 statusEl.textContent = 'Ошибка доступа к микрофону';
@@ -780,7 +772,6 @@
 
         // Настройки
         function showSettings() {
-            // Заполняем текущие значения
             modeSelect.value = config.mode;
             wordsRange.value = config.wordsToUse;
             wordsValue.textContent = config.wordsToUse;
@@ -851,37 +842,31 @@
         // Горячие клавиши
         function initHotkeys() {
             document.addEventListener('keydown', (e) => {
-                // Pause/Break - управление суфлером
                 if (e.code === 'Pause') {
                     e.preventDefault();
                     toggleRecognition();
                 }
 
-                // Ctrl+E - управление редактором
                 if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                     e.preventDefault();
                     toggleEditorBtn.click();
                 }
 
-                // Ctrl+T - переключение темы
                 if ((e.ctrlKey || e.metaKey) && e.key === 't') {
                     e.preventDefault();
                     toggleTheme();
                 }
 
-                // Ctrl+, - открыть настройки
                 if ((e.ctrlKey || e.metaKey) && e.key === ',') {
                     e.preventDefault();
                     showSettings();
                 }
 
-                // ArrowUp - вернуться на абзац назад
                 if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     handleBackwardNavigation();
                 }
 
-                // ArrowDown - перейти к следующему абзацу
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     const nextElement = allElements.find((el, index) => index > (lastFoundElement ? allElements.indexOf(lastFoundElement) : -1));
@@ -890,13 +875,11 @@
                     }
                 }
 
-                // Space - пауза / продолжить
                 if (e.key === ' ') {
                     e.preventDefault();
                     toggleRecognition();
                 }
 
-                // R - сброс к началу
                 if (e.key === 'r') {
                     e.preventDefault();
                     resetToStart();
@@ -951,7 +934,7 @@
                         centerElement(nextElement);
                     }
                 }
-            }, 10000); // 10 секунд
+            }, 10000);
         }
 
         function resetAutoScrollTimer() {
@@ -982,7 +965,6 @@
                 }
             });
 
-            // Автозапуск суфлера
             setTimeout(() => {
                 if (!isActive) {
                     startRecognition();
