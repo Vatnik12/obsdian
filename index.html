@@ -91,7 +91,6 @@
             overflow-y: auto;
             background: var(--preview-bg-light);
             transition: all 0.3s ease;
-            height: 50vh;
         }
 
         .dark-theme #preview {
@@ -279,51 +278,6 @@
             cursor: pointer;
         }
 
-        .karaoke-panel {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 50vh;
-            background: rgba(0, 0, 0, 1);
-            color: white;
-            padding: 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .karaoke-text {
-            font-size: 24px;
-            margin: 0;
-            text-align: center;
-        }
-
-        .karaoke-highlight {
-            background-color: var(--highlight);
-            color: black;
-            padding: 2px 4px;
-            border-radius: 3px;
-        }
-
-        .cloud-controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .cloud-controls button {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
         @media (max-width: 768px) {
             #app {
                 flex-direction: column;
@@ -380,7 +334,6 @@
             <select id="modeSelect" class="control-btn" style="width:100%">
                 <option value="highlight">Только подсветка</option>
                 <option value="highlight-scroll">Подсветка + скролл</option>
-                <option value="cloud">Режим "Облако фантазий"</option>
             </select>
         </div>
 
@@ -409,11 +362,6 @@
             <button id="resetSettings" class="control-btn">Сбросить</button>
         </div>
     </div>
-
-    <div class="karaoke-panel">
-        <p class="karaoke-text" id="karaokeText"></p>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6"></script>
     <script>
@@ -447,8 +395,6 @@
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
         const settingsPanel = document.querySelector('.settings-panel');
-        const karaokePanel = document.querySelector('.karaoke-panel');
-        const karaokeText = document.getElementById('karaokeText');
 
         // Элементы настроек
         const modeSelect = document.getElementById('modeSelect');
@@ -470,7 +416,6 @@
         let isPanelHidden = true;
         let allElements = [];
         let autoScrollTimer;
-        let currentHighlightIndex = 0;
 
         // Инициализация редактора
         function initEditor() {
@@ -531,11 +476,10 @@
         function togglePanel() {
             isPanelHidden = !isPanelHidden;
             controlPanel.classList.toggle('hidden');
-            panelToggle.classList.toggle('hidden');
             panelToggle.innerHTML = isPanelHidden ? '⚙️' : '❌';
         }
 
-        // Распознавание речи
+        // Распознавание речи (мгновенное)
         function initSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 statusEl.textContent = 'Распознавание речи не поддерживается';
@@ -552,6 +496,7 @@
                 const results = Array.from(event.results);
                 const last = results[results.length - 1];
 
+                // Обрабатываем даже промежуточные результаты
                 if (last && !last.isFinal) {
                     const transcript = last[0].transcript.trim();
                     const newWords = transcript.toLowerCase()
@@ -587,42 +532,25 @@
             return allElements.slice(start, end);
         }
 
-        // Обработка речи
+        // Мгновенная обработка речи
         function processSpeech() {
             if (wordsBuffer.length === 0) return;
 
             const searchWords = wordsBuffer.slice(-config.wordsToUse);
             const elementsToSearch = getNearbyElements();
-            let bestElement = null;
-            let maxMatches = 0;
+            const options = {
+                keys: ['textContent'],
+                threshold: 0.4,
+                includeScore: true
+            };
 
-            elementsToSearch.forEach(el => {
-                const text = el.textContent.toLowerCase();
-                let matches = 0;
+            const fuse = new Fuse(elementsToSearch.map(el => ({ textContent: el.textContent })), options);
+            const result = fuse.search(searchWords.join(' '));
 
-                searchWords.forEach(word => {
-                    if (text.includes(word)) matches++;
-                });
-
-                const matchThreshold = Math.ceil((config.sensitivity / 100) * searchWords.length);
-
-                if (matches >= matchThreshold && matches > maxMatches) {
-                    maxMatches = matches;
-                    bestElement = el;
-                }
-            });
-
-            if (bestElement) {
+            if (result.length > 0) {
+                const bestElement = elementsToSearch.find(el => el.textContent === result[0].item.textContent);
                 highlightMatches(bestElement, searchWords);
-
-                if (config.mode === 'highlight-scroll') {
-                    centerElement(bestElement);
-                }
-
-                if (config.mode === 'cloud') {
-                    highlightKaraoke(bestElement, searchWords);
-                }
-
+                centerElement(bestElement);
                 statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
                 lastFoundElement = bestElement;
                 resetAutoScrollTimer();
@@ -631,14 +559,17 @@
 
         // Подсветка совпадений
         function highlightMatches(element, words) {
+            // Убираем предыдущую подсветку
             document.querySelectorAll('.sufler-highlight').forEach(el => {
                 el.classList.remove('sufler-highlight');
             });
 
+            // Убираем подсветку активного блока
             document.querySelectorAll('.sufler-active-block').forEach(el => {
                 el.classList.remove('sufler-active-block');
             });
 
+            // Добавляем новую подсветку
             element.classList.add('sufler-active-block');
             let newHTML = element.innerHTML;
 
@@ -650,18 +581,6 @@
             });
 
             element.innerHTML = newHTML;
-        }
-
-        // Подсветка в режиме "Караоке"
-        function highlightKaraoke(element, words) {
-            const text = element.textContent;
-            karaokeText.innerHTML = text;
-
-            words.forEach(word => {
-                const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
-                const highlightedText = text.replace(regex, '<span class="karaoke-highlight">$1</span>');
-                karaokeText.innerHTML = highlightedText;
-            });
         }
 
         // Экранирование спецсимволов
@@ -725,6 +644,7 @@
 
         // Настройки
         function showSettings() {
+            // Заполняем текущие значения
             modeSelect.value = config.mode;
             wordsRange.value = config.wordsToUse;
             wordsValue.textContent = config.wordsToUse;
@@ -795,31 +715,37 @@
         // Горячие клавиши
         function initHotkeys() {
             document.addEventListener('keydown', (e) => {
+                // Pause/Break - управление суфлером
                 if (e.code === 'Pause') {
                     e.preventDefault();
                     toggleRecognition();
                 }
 
+                // Ctrl+E - управление редактором
                 if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                     e.preventDefault();
                     toggleEditorBtn.click();
                 }
 
+                // Ctrl+T - переключение темы
                 if ((e.ctrlKey || e.metaKey) && e.key === 't') {
                     e.preventDefault();
                     toggleTheme();
                 }
 
+                // Ctrl+, - открыть настройки
                 if ((e.ctrlKey || e.metaKey) && e.key === ',') {
                     e.preventDefault();
                     showSettings();
                 }
 
+                // ArrowUp - вернуться на абзац назад
                 if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     handleBackwardNavigation();
                 }
 
+                // ArrowDown - перейти к следующему абзацу
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     const nextElement = allElements.find((el, index) => index > (lastFoundElement ? allElements.indexOf(lastFoundElement) : -1));
@@ -828,11 +754,13 @@
                     }
                 }
 
+                // Space - пауза / продолжить
                 if (e.key === ' ') {
                     e.preventDefault();
                     toggleRecognition();
                 }
 
+                // R - сброс к началу
                 if (e.key === 'r') {
                     e.preventDefault();
                     resetToStart();
@@ -887,7 +815,7 @@
                         centerElement(nextElement);
                     }
                 }
-            }, 10000);
+            }, 10000); // 10 секунд
         }
 
         function resetAutoScrollTimer() {
@@ -906,6 +834,7 @@
             toggleThemeBtn.addEventListener('click', toggleTheme);
             panelToggle.addEventListener('click', togglePanel);
 
+            // Автозапуск суфлера
             setTimeout(() => {
                 if (!isActive) {
                     startRecognition();
