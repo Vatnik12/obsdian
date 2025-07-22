@@ -278,6 +278,70 @@
             cursor: pointer;
         }
 
+        .karaoke-panel {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            width: 80%;
+            max-width: 800px;
+            text-align: center;
+            display: none;
+        }
+
+        .karaoke-text {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .karaoke-highlight {
+            background-color: var(--highlight);
+            color: black;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .cloud-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            width: 80%;
+            max-width: 800px;
+            display: none;
+        }
+
+        .cloud-text {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .cloud-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .cloud-controls button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
         @media (max-width: 768px) {
             #app {
                 flex-direction: column;
@@ -334,6 +398,8 @@
             <select id="modeSelect" class="control-btn" style="width:100%">
                 <option value="highlight">Только подсветка</option>
                 <option value="highlight-scroll">Подсветка + скролл</option>
+                <option value="karaoke">Режим "Караоке"</option>
+                <option value="cloud">Режим "Облако фантазий"</option>
             </select>
         </div>
 
@@ -362,6 +428,20 @@
             <button id="resetSettings" class="control-btn">Сбросить</button>
         </div>
     </div>
+
+    <div class="karaoke-panel">
+        <p class="karaoke-text" id="karaokeText"></p>
+    </div>
+
+    <div class="cloud-panel">
+        <p class="cloud-text" id="cloudCurrentText"></p>
+        <p class="cloud-text" id="cloudNextText"></p>
+        <div class="cloud-controls">
+            <button id="cloudPrevBtn">Назад</button>
+            <button id="cloudNextBtn">Вперёд</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6"></script>
     <script>
@@ -395,6 +475,13 @@
         const controlPanel = document.querySelector('.control-panel');
         const panelToggle = document.querySelector('.panel-toggle');
         const settingsPanel = document.querySelector('.settings-panel');
+        const karaokePanel = document.querySelector('.karaoke-panel');
+        const karaokeText = document.getElementById('karaokeText');
+        const cloudPanel = document.querySelector('.cloud-panel');
+        const cloudCurrentText = document.getElementById('cloudCurrentText');
+        const cloudNextText = document.getElementById('cloudNextText');
+        const cloudPrevBtn = document.getElementById('cloudPrevBtn');
+        const cloudNextBtn = document.getElementById('cloudNextBtn');
 
         // Элементы настроек
         const modeSelect = document.getElementById('modeSelect');
@@ -416,6 +503,9 @@
         let isPanelHidden = true;
         let allElements = [];
         let autoScrollTimer;
+        let currentHighlightIndex = 0;
+        let currentKaraokeIndex = 0;
+        let currentCloudIndex = 0;
 
         // Инициализация редактора
         function initEditor() {
@@ -476,10 +566,11 @@
         function togglePanel() {
             isPanelHidden = !isPanelHidden;
             controlPanel.classList.toggle('hidden');
+            panelToggle.classList.toggle('hidden');
             panelToggle.innerHTML = isPanelHidden ? '⚙️' : '❌';
         }
 
-        // Распознавание речи (мгновенное)
+        // Распознавание речи
         function initSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window)) {
                 statusEl.textContent = 'Распознавание речи не поддерживается';
@@ -496,7 +587,6 @@
                 const results = Array.from(event.results);
                 const last = results[results.length - 1];
 
-                // Обрабатываем даже промежуточные результаты
                 if (last && !last.isFinal) {
                     const transcript = last[0].transcript.trim();
                     const newWords = transcript.toLowerCase()
@@ -532,25 +622,44 @@
             return allElements.slice(start, end);
         }
 
-        // Мгновенная обработка речи
+        // Обработка речи
         function processSpeech() {
             if (wordsBuffer.length === 0) return;
 
             const searchWords = wordsBuffer.slice(-config.wordsToUse);
             const elementsToSearch = getNearbyElements();
-            const options = {
-                keys: ['textContent'],
-                threshold: 0.4,
-                includeScore: true
-            };
+            let bestElement = null;
+            let maxMatches = 0;
 
-            const fuse = new Fuse(elementsToSearch.map(el => ({ textContent: el.textContent })), options);
-            const result = fuse.search(searchWords.join(' '));
+            elementsToSearch.forEach(el => {
+                const text = el.textContent.toLowerCase();
+                let matches = 0;
 
-            if (result.length > 0) {
-                const bestElement = elementsToSearch.find(el => el.textContent === result[0].item.textContent);
-                highlightMatches(bestElement, searchWords);
-                centerElement(bestElement);
+                searchWords.forEach(word => {
+                    if (text.includes(word)) matches++;
+                });
+
+                const matchThreshold = Math.ceil((config.sensitivity / 100) * searchWords.length);
+
+                if (matches >= matchThreshold && matches > maxMatches) {
+                    maxMatches = matches;
+                    bestElement = el;
+                }
+            });
+
+            if (bestElement) {
+                if (config.mode === 'karaoke') {
+                    highlightKaraoke(bestElement, searchWords);
+                } else if (config.mode === 'cloud') {
+                    updateCloudPanel(bestElement);
+                } else {
+                    highlightMatches(bestElement, searchWords);
+                }
+
+                if (config.mode === 'highlight-scroll') {
+                    centerElement(bestElement);
+                }
+
                 statusEl.textContent = `Найдено: "${searchWords.join(' ')}"`;
                 lastFoundElement = bestElement;
                 resetAutoScrollTimer();
@@ -559,17 +668,14 @@
 
         // Подсветка совпадений
         function highlightMatches(element, words) {
-            // Убираем предыдущую подсветку
             document.querySelectorAll('.sufler-highlight').forEach(el => {
                 el.classList.remove('sufler-highlight');
             });
 
-            // Убираем подсветку активного блока
             document.querySelectorAll('.sufler-active-block').forEach(el => {
                 el.classList.remove('sufler-active-block');
             });
 
-            // Добавляем новую подсветку
             element.classList.add('sufler-active-block');
             let newHTML = element.innerHTML;
 
@@ -581,6 +687,29 @@
             });
 
             element.innerHTML = newHTML;
+        }
+
+        // Подсветка в режиме "Караоке"
+        function highlightKaraoke(element, words) {
+            const text = element.textContent;
+            karaokeText.innerHTML = text;
+            karaokePanel.style.display = 'block';
+
+            words.forEach(word => {
+                const regex = new RegExp(`(${escapeRegExp(word)})`, 'gi');
+                const highlightedText = text.replace(regex, '<span class="karaoke-highlight">$1</span>');
+                karaokeText.innerHTML = highlightedText;
+            });
+        }
+
+        // Обновление панели "Облако фантазий"
+        function updateCloudPanel(element) {
+            const currentIndex = allElements.indexOf(element);
+            const nextIndex = currentIndex + 1;
+
+            cloudCurrentText.textContent = element.textContent;
+            cloudNextText.textContent = nextIndex < allElements.length ? allElements[nextIndex].textContent : '';
+            cloudPanel.style.display = 'block';
         }
 
         // Экранирование спецсимволов
@@ -622,7 +751,6 @@
                 wordsBuffer = [];
                 lastFoundElement = null;
                 startAutoScrollTimer();
-
                 window.focus();
             } catch (error) {
                 statusEl.textContent = 'Ошибка доступа к микрофону';
@@ -644,7 +772,6 @@
 
         // Настройки
         function showSettings() {
-            // Заполняем текущие значения
             modeSelect.value = config.mode;
             wordsRange.value = config.wordsToUse;
             wordsValue.textContent = config.wordsToUse;
@@ -715,37 +842,31 @@
         // Горячие клавиши
         function initHotkeys() {
             document.addEventListener('keydown', (e) => {
-                // Pause/Break - управление суфлером
                 if (e.code === 'Pause') {
                     e.preventDefault();
                     toggleRecognition();
                 }
 
-                // Ctrl+E - управление редактором
                 if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                     e.preventDefault();
                     toggleEditorBtn.click();
                 }
 
-                // Ctrl+T - переключение темы
                 if ((e.ctrlKey || e.metaKey) && e.key === 't') {
                     e.preventDefault();
                     toggleTheme();
                 }
 
-                // Ctrl+, - открыть настройки
                 if ((e.ctrlKey || e.metaKey) && e.key === ',') {
                     e.preventDefault();
                     showSettings();
                 }
 
-                // ArrowUp - вернуться на абзац назад
                 if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     handleBackwardNavigation();
                 }
 
-                // ArrowDown - перейти к следующему абзацу
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     const nextElement = allElements.find((el, index) => index > (lastFoundElement ? allElements.indexOf(lastFoundElement) : -1));
@@ -754,13 +875,11 @@
                     }
                 }
 
-                // Space - пауза / продолжить
                 if (e.key === ' ') {
                     e.preventDefault();
                     toggleRecognition();
                 }
 
-                // R - сброс к началу
                 if (e.key === 'r') {
                     e.preventDefault();
                     resetToStart();
@@ -815,7 +934,7 @@
                         centerElement(nextElement);
                     }
                 }
-            }, 10000); // 10 секунд
+            }, 10000);
         }
 
         function resetAutoScrollTimer() {
@@ -833,8 +952,19 @@
             suflerToggle.addEventListener('click', toggleRecognition);
             toggleThemeBtn.addEventListener('click', toggleTheme);
             panelToggle.addEventListener('click', togglePanel);
+            cloudPrevBtn.addEventListener('click', () => {
+                if (currentCloudIndex > 0) {
+                    currentCloudIndex--;
+                    updateCloudPanel(allElements[currentCloudIndex]);
+                }
+            });
+            cloudNextBtn.addEventListener('click', () => {
+                if (currentCloudIndex < allElements.length - 1) {
+                    currentCloudIndex++;
+                    updateCloudPanel(allElements[currentCloudIndex]);
+                }
+            });
 
-            // Автозапуск суфлера
             setTimeout(() => {
                 if (!isActive) {
                     startRecognition();
