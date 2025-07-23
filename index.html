@@ -306,6 +306,11 @@
             border-radius: 3px;
         }
 
+        .active-line {
+            background-color: rgba(255, 255, 0, 0.5);
+            display: block;
+        }
+
         @media (max-width: 768px) {
             #app {
                 flex-direction: column;
@@ -389,7 +394,6 @@
         <p class="karaoke-text" id="karaokeText"></p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6"></script>
     <script>
         (function() {
             'use strict';
@@ -802,15 +806,52 @@
                     lastFoundElement = allElements[0];
                 }
 
-                const currentIndex = allElements.indexOf(lastFoundElement);
-                const nextIndex = currentIndex + direction;
+                const currentElement = lastFoundElement;
+                const lines = getLinesFromElement(currentElement);
+                const activeLine = currentElement.querySelector('.active-line');
 
-                if (nextIndex >= 0 && nextIndex < allElements.length) {
-                    const nextElement = allElements[nextIndex];
-                    highlightMatches(nextElement, []);
-                    centerElement(nextElement);
-                    lastFoundElement = nextElement;
+                let currentLineIndex = -1;
+                if (activeLine) {
+                    currentLineIndex = Array.from(lines).indexOf(activeLine);
+                    activeLine.classList.remove('active-line');
                 }
+
+                let nextLineIndex = currentLineIndex + direction;
+
+                if (nextLineIndex < 0 || nextLineIndex >= lines.length) {
+                    const currentIndex = allElements.indexOf(currentElement);
+                    const nextElementIndex = currentIndex + (direction > 0 ? 1 : -1);
+
+                    if (nextElementIndex >= 0 && nextElementIndex < allElements.length) {
+                        const nextElement = allElements[nextElementIndex];
+                        const nextLines = getLinesFromElement(nextElement);
+
+                        nextLineIndex = direction > 0 ? 0 : nextLines.length - 1;
+                        if (nextLines.length > 0) {
+                            nextLines[nextLineIndex].classList.add('active-line');
+                            centerElement(nextElement);
+                            lastFoundElement = nextElement;
+                        }
+                    }
+                } else {
+                    lines[nextLineIndex].classList.add('active-line');
+                }
+            }
+
+            function getLinesFromElement(element) {
+                const text = element.textContent;
+                const lines = text.split('\n');
+
+                element.innerHTML = '';
+                const lineElements = lines.map(line => {
+                    const span = document.createElement('span');
+                    span.textContent = line;
+                    element.appendChild(span);
+                    element.appendChild(document.createElement('br'));
+                    return span;
+                });
+
+                return lineElements;
             }
 
             function resetToStart() {
@@ -822,6 +863,10 @@
 
                 document.querySelectorAll('.sufler-active-block').forEach(el => {
                     el.classList.remove('sufler-active-block');
+                });
+
+                document.querySelectorAll('.active-line').forEach(el => {
+                    el.classList.remove('active-line');
                 });
 
                 window.scrollTo({
